@@ -14,6 +14,14 @@ gradle buildExtension
 
 The extension .zip will be created in `dist/`.
 
+### Ubuntu
+
+```bash
+sudo snap install ghidra --edge
+sudo snap install gradle --edge --classic
+make
+```
+
 ### IDEA
 
 A Run Configuration is provided for IntelliJ IDEA. To make it work you should set the location of your Ghidra installation by adding the `GHIDRA_INSTALL_DIR` Path Variable under `File->Settings->Path Variables`.
