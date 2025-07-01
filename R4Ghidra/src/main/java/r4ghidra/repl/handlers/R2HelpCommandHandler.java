@@ -89,6 +89,10 @@ public class R2HelpCommandHandler implements R2CommandHandler {
                 }
                 return evaluateExpressionInDecimal(command.getFirstArgument(""), context);
                 
+            // '?e' - echo command
+            case "e":
+                return handleEchoCommand(command);
+                
             // Handle space after ? (e.g., '? 123') - multi-base display
             case "":
                 if (command.getArgumentCount() > 0) {
@@ -471,15 +475,44 @@ public class R2HelpCommandHandler implements R2CommandHandler {
         return subcommands;
     }
 
+    /**
+     * Handle the echo command (?e)
+     * 
+     * @param command The command to handle
+     * @return The echoed text with a newline
+     */
+    private String handleEchoCommand(R2Command command) {
+        // Join all arguments into a single string with spaces
+        StringBuilder echo = new StringBuilder();
+        List<String> args = command.getArguments();
+        
+        if (args.isEmpty()) {
+            // Return just a newline if no arguments
+            return "\n";
+        }
+        
+        // Join all arguments with spaces
+        for (int i = 0; i < args.size(); i++) {
+            echo.append(args.get(i));
+            if (i < args.size() - 1) {
+                echo.append(" ");
+            }
+        }
+        
+        // Return the echoed text with a newline
+        return echo.toString() + "\n";
+    }
+    
     @Override
     public String getHelp() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Usage: ?[V|v|vi|*][jq] [command|expr]\n");
+        sb.append("Usage: ?[V|v|vi|e|*][jq] [command|expr]\n");
         sb.append(" ?             show general help\n");
         sb.append(" ? [cmd]       show help for specific command\n");
         sb.append(" ?V            show version information\n");
         sb.append(" ?v expr       evaluate expression and show result in hexadecimal\n");
         sb.append(" ?vi expr      evaluate expression and show result in decimal\n");
+        sb.append(" ?e [text]     echo text to console\n");
         sb.append(" ? expr        evaluate expression and show result in multiple formats\n");
         sb.append(" ?*            recursively show help for all commands\n");
         sb.append(" ?* [filter]   recursively show help for commands matching filter\n");
