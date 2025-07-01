@@ -52,21 +52,17 @@ public class R2DecompileCommandHandler implements R2CommandHandler {
                 function,
                 context
             );
-
             // Format the output according to the command suffix
-            // TODO: use command.getCommandSuffix() instead
-            if (command.hasSuffix('*')) {
-                // radare2 comment format
-                return formatAsRadare2Commands(lines);
-            } else if (command.hasSuffix('j')) {
-                // JSON format
-                return formatAsJson(lines, function);
-            } else if (command.hasSuffix('q')) {
-                // Quiet format (just the code without addresses)
-                return formatQuiet(lines);
-            } else {
-                // Standard format with addresses
-                return formatStandard(lines);
+            Character suffix = command.getCommandSuffix();
+            switch (suffix) {
+                case '*':
+                    return formatAsRadare2Commands(lines);
+                case 'j':
+                    return formatAsJson(lines, function);
+                case 'q':
+                    return formatQuiet(lines);
+                default:
+                    return formatStandard(lines);
             }
         } catch (MemoryAccessException mae) {
             throw new R2CommandException(

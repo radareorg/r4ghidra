@@ -53,6 +53,12 @@ public class R2REPLImpl {
         }
         
         try {
+            // Check for pipe operator (|)
+            int pipeIndex = findUnquotedChar(cmdStr, '|');
+            if (pipeIndex > 0) {
+                return executePipeCommand(cmdStr, pipeIndex);
+            }
+            
             // Check for output filter (~)
             String[] cmdAndFilter = R2OutputFilter.extractCommandAndFilter(cmdStr);
             if (cmdAndFilter != null) {
@@ -288,6 +294,104 @@ public class R2REPLImpl {
         
         matcher.appendTail(result);
         return result.toString();
+    }
+    
+    /**
+     * Find an unquoted character in a string, respecting quotes
+     * 
+     * @param str The string to search in
+     * @param charToFind The character to find
+     * @return The index of the first occurrence of the character outside quotes, or -1 if not found
+     */
+    private int findUnquotedChar(String str, char charToFind) {
+        boolean inSingleQuotes = false;
+        boolean inDoubleQuotes = false;
+        
+        for (int i = 0; i < str.length(); i++) {
+            char c = str.charAt(i);
+            
+            // Handle quotes
+            if (c == '\'' && !inDoubleQuotes) {
+                inSingleQuotes = !inSingleQuotes;
+            } else if (c == '"' && !inSingleQuotes) {
+                inDoubleQuotes = !inDoubleQuotes;
+            } 
+            // Check for character only if not in quotes
+            else if (c == charToFind && !inSingleQuotes && !inDoubleQuotes) {
+                return i;
+            }
+        }
+        
+        return -1; // Not found
+    }
+    
+    /**
+     * Execute a pipe command (cmd1 | cmd2)
+     * 
+     * @param cmdStr The full command string with the pipe
+     * @param pipeIndex The position of the pipe character
+     * @return The result of executing the pipe command
+     */
+    private String executePipeCommand(String cmdStr, int pipeIndex) throws R2CommandException {
+        // Split the command string at the pipe
+        String leftCmd = cmdStr.substring(0, pipeIndex).trim();
+        String rightCmd = cmdStr.substring(pipeIndex + 1).trim();
+        
+        if (leftCmd.isEmpty() || rightCmd.isEmpty()) {
+            throw new R2CommandException("Empty command in pipe");
+        }
+        
+        // Execute the left command to get its output
+        String leftOutput = executeCommand(leftCmd);
+        
+        try {
+            // Create a process for the right command
+            ProcessBuilder processBuilder = new ProcessBuilder();
+            if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+                processBuilder.command("cmd.exe", "/c", rightCmd);
+            } else {
+                processBuilder.command("bash", "-c", rightCmd);
+            }
+            
+            // Start the process
+            Process process = processBuilder.start();
+            
+            // Write the left command's output to the process's stdin
+            try (java.io.OutputStream stdin = process.getOutputStream()) {
+                stdin.write(leftOutput.getBytes());
+                stdin.flush();
+            }
+            
+            // Read the process's stdout
+            StringBuilder output = new StringBuilder();
+            try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    output.append(line).append("\n");
+                }
+            }
+            
+            // Wait for the process to complete
+            int exitCode = process.waitFor();
+            if (exitCode != 0) {
+                // Read the error stream if there was an error
+                StringBuilder errorOutput = new StringBuilder();
+                try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                        new java.io.InputStreamReader(process.getErrorStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        errorOutput.append(line).append("\n");
+                    }
+                }
+                
+                throw new R2CommandException("Shell command failed with exit code " + exitCode + ": " + errorOutput);
+            }
+            
+            return output.toString();
+        } catch (java.io.IOException | InterruptedException e) {
+            throw new R2CommandException("Error executing pipe command: " + e.getMessage());
+        }
     }
     
     /**

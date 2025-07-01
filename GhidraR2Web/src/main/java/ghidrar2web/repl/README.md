@@ -23,6 +23,7 @@ The R2REPL architecture consists of:
   - `.cmd` for script execution (execute command and interpret its output as r2 commands)
   - `!cmd` for executing shell commands
   - `~pattern` for filtering output (grep, JSON pretty print, line counting)
+  - `|cmd` for piping output to shell commands
   - Output formats with suffixes: `j` (JSON), `*` (r2 commands), `,` (CSV), `?` (help), `q` (quiet)
 - **Error handling** - Structured error reporting and exception system
 - **Help system** - Built-in help for all commands
@@ -191,6 +192,28 @@ This will:
 1. Execute the inner command (s) to get the current address
 2. Substitute the result into the outer command
 3. Execute the resulting command
+
+### Pipe Commands (|)
+
+Commands can be piped to shell commands using the `|` operator:
+
+```
+pd | grep call
+```
+
+This will:
+1. Execute the left command (pd) to get its output
+2. Pipe that output as input to the right shell command (grep call)
+3. Return the output of the shell command
+
+Examples:
+```
+pd | grep -A2 mov   # Show lines containing 'mov' and 2 lines after
+afl | sort -n       # List functions and sort numerically
+pd | head -n 20     # Show only first 20 lines of decompilation
+```
+
+This feature works just like POSIX shell pipes and is an alternative to using the built-in grep filter (`~`).
 
 ## Example Command Handler
 
