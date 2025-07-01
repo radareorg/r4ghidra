@@ -53,6 +53,18 @@ public class R2REPLImpl {
         }
         
         try {
+            // Check for append redirection (>>)
+            int appendIndex = findUnquotedString(cmdStr, ">>");
+            if (appendIndex > 0) {
+                return executeRedirectCommand(cmdStr, appendIndex, true);
+            }
+            
+            // Check for output redirection (>)
+            int redirectIndex = findUnquotedChar(cmdStr, '>');
+            if (redirectIndex > 0) {
+                return executeRedirectCommand(cmdStr, redirectIndex, false);
+            }
+            
             // Check for pipe operator (|)
             int pipeIndex = findUnquotedChar(cmdStr, '|');
             if (pipeIndex > 0) {
@@ -90,6 +102,11 @@ public class R2REPLImpl {
             // Parse the command
             R2Command cmd = parseCommand(cmdStr);
             
+            // Handle @@ syntax for multiple command execution
+            if (cmd.hasMultiAddressInfo()) {
+                return executeMultiAddressCommand(cmd);
+            }
+            
             // Handle special @ syntax for temporary seek
             Address originalSeek = null;
             if (cmd.hasTemporaryAddress()) {
@@ -112,7 +129,10 @@ public class R2REPLImpl {
     }
     
     /**
-     * Execute a dot command (.) that runs a command and then processes its output as r2 commands
+     * Execute a dot command (.) that either:
+     * 1. Runs a command and then processes its output as r2 commands, or
+     * 2. Reads a script file and executes each line as an r2 command, or
+     * 3. Executes a shell command and processes its output as r2 commands
      * 
      * @param dotCmdStr The dot command string
      * @return The combined result of executing all resulting commands
@@ -125,14 +145,86 @@ public class R2REPLImpl {
             throw new R2CommandException("Empty dot command");
         }
         
-        // Execute the command to get its output
-        String cmdOutput = executeCommand(cmdStr);
+        // Check if we're loading a script file (when command starts with a space)
+        if (cmdStr.startsWith(" ")) {
+            String filePath = cmdStr.trim();
+            return executeScriptFile(filePath);
+        } 
+        // Check if we're executing a shell command (when command starts with !)
+        else if (cmdStr.startsWith("!")) {
+            String shellCmd = cmdStr.substring(1).trim();
+            return executeShellCommandAsScript(shellCmd);
+        } 
+        else {
+            // Original behavior: execute command and process its output
+            String cmdOutput = executeCommand(cmdStr);
+            return executeScriptFromOutput(cmdOutput);
+        }
+    }
+    
+    /**
+     * Execute r2 commands from a script file
+     * 
+     * @param filePath The path to the script file
+     * @return The combined result of executing all commands in the file
+     */
+    private String executeScriptFile(String filePath) throws R2CommandException {
+        try {
+            // Read the script file
+            java.nio.file.Path path = java.nio.file.Paths.get(filePath);
+            if (!java.nio.file.Files.exists(path)) {
+                throw new R2CommandException("Script file not found: " + filePath);
+            }
+            
+            String scriptContent = new String(java.nio.file.Files.readAllBytes(path));
+            return executeScriptFromOutput(scriptContent);
+            
+        } catch (java.io.IOException e) {
+            throw new R2CommandException("Error reading script file: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Execute a shell command and interpret its output as an r2 script
+     * 
+     * @param shellCmd The shell command to execute
+     * @return The combined result of executing the command output as r2 commands
+     */
+    private String executeShellCommandAsScript(String shellCmd) throws R2CommandException {
+        if (shellCmd.isEmpty()) {
+            throw new R2CommandException("Empty shell command");
+        }
         
+        // Get the shell command handler
+        R2CommandHandler shellHandler = commandRegistry.get("!");
+        if (shellHandler == null) {
+            throw new R2CommandException("Shell command handler not registered");
+        }
+        
+        // Create a command for the shell handler with !! prefix to ensure output capture
+        // We prefix with another ! to ensure the command is processed as !! by the handler
+        List<String> args = new ArrayList<>();
+        R2Command shellCommand = new R2Command("!", "!" + shellCmd, args, null);
+        
+        // Execute the shell command to get its output
+        String shellOutput = shellHandler.execute(shellCommand, context);
+        
+        // Process the shell output as an r2 script
+        return executeScriptFromOutput(shellOutput);
+    }
+    
+    /**
+     * Execute a series of r2 commands from text content
+     * 
+     * @param scriptContent The text containing commands, one per line
+     * @return The combined result of executing all commands
+     */
+    private String executeScriptFromOutput(String scriptContent) throws R2CommandException {
         // Process the output as a series of r2 commands
         StringBuilder result = new StringBuilder();
         
         // Split by lines and execute each line as a separate command
-        String[] lines = cmdOutput.split("\\n");
+        String[] lines = scriptContent.split("\\n");
         for (String line : lines) {
             line = line.trim();
             if (!line.isEmpty()) {
@@ -223,6 +315,11 @@ public class R2REPLImpl {
     private R2Command parseCommand(String cmdStr) throws R2CommandException {
         // Extract any backtick command substitution
         cmdStr = processCommandSubstitution(cmdStr);
+        
+        // Check for @@ command (multiple command execution)
+        if (cmdStr.contains("@@")) {
+            return parseMultiAddressCommand(cmdStr);
+        }
         
         // Split the command into the main part and any @ address part
         String[] atParts = cmdStr.split("@", 2);
@@ -326,6 +423,44 @@ public class R2REPLImpl {
     }
     
     /**
+     * Find an unquoted string in another string, respecting quotes
+     * 
+     * @param str The string to search in
+     * @param stringToFind The string to find
+     * @return The index of the first occurrence of the string outside quotes, or -1 if not found
+     */
+    private int findUnquotedString(String str, String stringToFind) {
+        boolean inSingleQuotes = false;
+        boolean inDoubleQuotes = false;
+        
+        for (int i = 0; i <= str.length() - stringToFind.length(); i++) {
+            char c = str.charAt(i);
+            
+            // Handle quotes
+            if (c == '\'' && !inDoubleQuotes) {
+                inSingleQuotes = !inSingleQuotes;
+            } else if (c == '"' && !inSingleQuotes) {
+                inDoubleQuotes = !inDoubleQuotes;
+            } 
+            // Check for string match only if not in quotes
+            else if (!inSingleQuotes && !inDoubleQuotes) {
+                boolean matches = true;
+                for (int j = 0; j < stringToFind.length(); j++) {
+                    if (str.charAt(i + j) != stringToFind.charAt(j)) {
+                        matches = false;
+                        break;
+                    }
+                }
+                if (matches) {
+                    return i;
+                }
+            }
+        }
+        
+        return -1; // Not found
+    }
+    
+    /**
      * Execute a pipe command (cmd1 | cmd2)
      * 
      * @param cmdStr The full command string with the pipe
@@ -395,8 +530,231 @@ public class R2REPLImpl {
     }
     
     /**
+     * Execute a redirection command (cmd > file or cmd >> file)
+     * 
+     * @param cmdStr The full command string with the redirection
+     * @param redirectIndex The position of the redirection operator
+     * @param append Whether to append to the file (>> instead of >)
+     * @return A message indicating success or failure
+     */
+    private String executeRedirectCommand(String cmdStr, int redirectIndex, boolean append) throws R2CommandException {
+        // Determine the length of the redirection operator (> or >>)
+        int operatorLength = append ? 2 : 1;
+        
+        // Split the command string at the redirection operator
+        String leftCmd = cmdStr.substring(0, redirectIndex).trim();
+        String filePath = cmdStr.substring(redirectIndex + operatorLength).trim();
+        
+        if (leftCmd.isEmpty() || filePath.isEmpty()) {
+            throw new R2CommandException(append ? "Usage: command >> file" : "Usage: command > file");
+        }
+        
+        // Execute the left command to get its output
+        String output = executeCommand(leftCmd);
+        
+        try {
+            java.nio.file.Path path = java.nio.file.Paths.get(filePath);
+            
+            // Make sure the parent directory exists
+            java.nio.file.Path parent = path.getParent();
+            if (parent != null) {
+                java.nio.file.Files.createDirectories(parent);
+            }
+            
+            // Write to the file (either create/overwrite or append)
+            if (append) {
+                java.nio.file.Files.write(path, output.getBytes(),
+                        java.nio.file.StandardOpenOption.CREATE,
+                        java.nio.file.StandardOpenOption.APPEND);
+            } else {
+                java.nio.file.Files.write(path, output.getBytes());
+            }
+            
+            return "Output " + (append ? "appended to" : "written to") + " file: " + filePath;
+        } catch (java.io.IOException e) {
+            throw new R2CommandException("Error writing to file: " + e.getMessage());
+        }
+    }
+    
+    /**
      * Get the current context
      */
+    /**
+     * Execute a command across multiple addresses using @@ syntax
+     * 
+     * @param cmd The command to execute with multi-address info
+     * @return The combined result of executing the command at all addresses
+     * @throws R2CommandException If the command cannot be executed
+     */
+    private String executeMultiAddressCommand(R2Command cmd) throws R2CommandException {
+        String addressInfo = cmd.getMultiAddressInfo();
+        List<Address> addresses = new ArrayList<>();
+        
+        // Get the addresses based on the @@ syntax
+        if (addressInfo.startsWith("=")) {
+            // @@= - Space-separated addresses
+            addresses = parseSpaceSeparatedAddresses(addressInfo.substring(1));
+        } else if (addressInfo.startsWith("c:")) {
+            // @@c: - Command output addresses
+            addresses = parseCommandOutputAddresses(addressInfo.substring(2));
+        } else {
+            throw new R2CommandException("Unknown @@ syntax: " + addressInfo);
+        }
+        
+        if (addresses.isEmpty()) {
+            return "No valid addresses found for @@ command";
+        }
+        
+        // Execute the command at each address and combine results
+        StringBuilder result = new StringBuilder();
+        Address originalSeek = context.getCurrentAddress();
+        
+        try {
+            for (Address address : addresses) {
+                // Set the temporary address
+                context.setCurrentAddress(address);
+                
+                // Execute the command
+                String cmdResult = executeCommandWithHandler(cmd);
+                
+                // Add a header with the address
+                result.append("--- @ ").append(context.formatAddress(address)).append(" ---\n");
+                result.append(cmdResult);
+                if (!cmdResult.endsWith("\n")) {
+                    result.append("\n");
+                }
+            }
+        } finally {
+            // Restore the original seek position
+            context.setCurrentAddress(originalSeek);
+        }
+        
+        return result.toString();
+    }
+    
+    /**
+     * Parse space-separated addresses for @@= syntax
+     * 
+     * @param addressStr The address string after @@=
+     * @return A list of addresses
+     */
+    private List<Address> parseSpaceSeparatedAddresses(String addressStr) throws R2CommandException {
+        List<Address> addresses = new ArrayList<>();
+        String[] parts = addressStr.trim().split("\\s+");
+        
+        for (String part : parts) {
+            if (part.trim().isEmpty()) {
+                continue;
+            }
+            
+            try {
+                Address address = context.parseAddress(part.trim());
+                addresses.add(address);
+            } catch (Exception e) {
+                // Skip invalid addresses
+            }
+        }
+        
+        return addresses;
+    }
+    
+    /**
+     * Parse command output for addresses in @@c: syntax
+     * 
+     * @param command The command to execute
+     * @return A list of addresses from the command output
+     */
+    private List<Address> parseCommandOutputAddresses(String command) throws R2CommandException {
+        List<Address> addresses = new ArrayList<>();
+        
+        // Execute the command to get potential addresses
+        String output = executeCommand(command);
+        String[] lines = output.split("\\n");
+        
+        for (String line : lines) {
+            // Split each line by whitespace and try to parse each token as an address
+            String[] tokens = line.trim().split("\\s+");
+            for (String token : tokens) {
+                if (token.trim().isEmpty()) {
+                    continue;
+                }
+                
+                try {
+                    Address address = context.parseAddress(token.trim());
+                    addresses.add(address);
+                } catch (Exception e) {
+                    // Skip tokens that are not valid addresses
+                }
+            }
+        }
+        
+        return addresses;
+    }
+    
+    /**
+     * Parse a command with @@ syntax for multiple command execution
+     * 
+     * @param cmdStr The command string with @@ syntax
+     * @return The parsed command with the addresses parsed
+     * @throws R2CommandException If the command cannot be parsed
+     */
+    private R2Command parseMultiAddressCommand(String cmdStr) throws R2CommandException {
+        // Split the command into the main part and the @@ part
+        String[] parts = cmdStr.split("@@", 2);
+        if (parts.length != 2) {
+            throw new R2CommandException("Invalid @@ command syntax");
+        }
+        
+        String mainCommand = parts[0].trim();
+        String addressPart = parts[1].trim();
+        
+        // Create a basic command object without temporary address
+        // We'll add the multiple addresses later in executeCommand
+        if (mainCommand.isEmpty()) {
+            throw new R2CommandException("Empty command");
+        }
+        
+        String prefix = String.valueOf(mainCommand.charAt(0));
+        String subcommand = mainCommand.length() > 1 ? mainCommand.substring(1) : "";
+        
+        List<String> args = new ArrayList<>();
+        
+        // Parse arguments based on spaces, but respect quoted strings
+        if (subcommand.contains(" ")) {
+            int spacePos = subcommand.indexOf(" ");
+            String argsPart = subcommand.substring(spacePos).trim();
+            subcommand = subcommand.substring(0, spacePos);
+            
+            // Parse arguments with proper handling of quoted strings
+            Pattern pattern = Pattern.compile("[^\\s\"']+|\"([^\"]*)\"|\'([^']*)'\'");
+            Matcher matcher = pattern.matcher(argsPart);
+            
+            while (matcher.find()) {
+                if (matcher.group(1) != null) {
+                    // Add double-quoted string without quotes
+                    args.add(matcher.group(1));
+                } else if (matcher.group(2) != null) {
+                    // Add single-quoted string without quotes
+                    args.add(matcher.group(2));
+                } else {
+                    // Add unquoted word
+                    args.add(matcher.group());
+                }
+            }
+        }
+        
+        // Create the command with the parsed components and null address
+        // We'll use the special field in R2Command to indicate it's a @@ command
+        // with specific address syntax
+        R2Command cmd = new R2Command(prefix, subcommand, args, null);
+        
+        // Store the address part in the command arguments for later processing
+        // We'll use the command arguments to store the @@ syntax information
+        cmd.setMultiAddressInfo(addressPart);
+        
+        return cmd;
+    }
+    
     public R2Context getContext() {
         return context;
     }

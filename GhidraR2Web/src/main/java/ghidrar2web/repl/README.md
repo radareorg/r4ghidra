@@ -11,6 +11,7 @@ The R2REPL architecture consists of:
 3. **R2CommandHandler** - Interface for all command handlers
 4. **R2Context** - Context object for command execution, manages state like current seek, blocksize, etc.
 5. **Command Handlers** - Individual implementations of R2CommandHandler for each command (located in the handlers package)
+6. **R2Num** - Advanced expression evaluator that provides radare2-compatible number parsing and calculations
 
 ## Features
 
@@ -18,17 +19,21 @@ The R2REPL architecture consists of:
 - **Advanced parsing** - Properly handles command syntax, quoted strings, etc.
 - **Special syntax support**:
   - `@addr` for temporary seek operations
+  - `@@` for multiple command execution across different addresses
   - `` `cmd` `` for command output substitution
   - `'cmd` for literal command interpretation (no special character processing)
   - `.cmd` for script execution (execute command and interpret its output as r2 commands)
   - `!cmd` for executing shell commands
   - `~pattern` for filtering output (grep, JSON pretty print, line counting)
   - `|cmd` for piping output to shell commands
+  - `>file` and `>>file` for redirecting output to files
+  - `%var` for environment variable management
   - Output formats with suffixes: `j` (JSON), `*` (r2 commands), `,` (CSV), `?` (help), `q` (quiet)
 - **Error handling** - Structured error reporting and exception system
 - **Help system** - Built-in help for all commands
 - **Context management** - Clean separation of state and command execution
 - **Extensibility** - Easy to add new commands by implementing R2CommandHandler
+- **Expression evaluation** - Powerful R2Num expression evaluator supporting different number bases, symbols, memory access, and math operations
 
 ## Integrating with GhidraR2Web
 
@@ -132,8 +137,9 @@ Examples:
 
 ### Dot Commands (Script Execution)
 
-Commands that start with a dot (`.`) are script execution commands:
+Commands that start with a dot (`.`) are script execution commands. There are two forms:
 
+#### 1. Command Output Execution
 ```
 .pdd*
 ```
@@ -144,10 +150,42 @@ This will:
 3. Execute each line of the output as a separate radare2 command
 4. Return the combined results
 
-This is useful for:
+#### 2. Script File Execution
+```
+. script.r2
+```
+
+Notice the space after the dot. This will:
+1. Read the contents of the specified file (`script.r2`)
+2. Execute each line of the file as a separate radare2 command
+3. Return the combined results
+
+This works exactly like the POSIX shell dot command (`. script.sh`), but for r2 commands.
+
+#### 3. Shell Command Script Execution
+```
+.!command args
+```
+
+This will:
+1. Execute the shell command and capture its output
+2. Execute each line of the output as a separate radare2 command
+3. Return the combined results
+
+This is useful for running external tools that generate r2 commands.
+
+Both forms are useful for:
 - Running r2 commands from external scripts or files
 - Reusing the output of commands that produce r2 script output (with the `*` suffix)
 - Executing a series of commands stored in a file or another command's output
+
+Examples:
+```
+. analysis.r2                     # Run commands from a script file
+.pdd* > script.r2 && . script.r2   # Generate and then execute a script
+.!rabin2 -ri $FILE                # Execute rabin2 and run its output as r2 commands
+.!cat script.r2                   # Run script from a file using shell redirection
+```
 
 ### Quoted Commands
 
@@ -179,6 +217,39 @@ This will:
 1. Temporarily set the current address to 0x1000
 2. Execute the command
 3. Restore the original address
+
+### Multiple Address Command Execution (@@)
+
+The `@@` operator executes a command multiple times at different addresses:
+
+#### 1. Space-Separated Addresses (@@=)
+```
+p8 4 @@= 0x1000 0x2000 0x3000
+```
+
+This will:
+1. Execute the command `p8 4` at address 0x1000
+2. Execute the command `p8 4` at address 0x2000
+3. Execute the command `p8 4` at address 0x3000
+4. Return the combined results with headers indicating each address
+
+#### 2. Command Output Addresses (@@c:)
+```
+p8 4 @@c:`afl~[0]`
+```
+
+This will:
+1. Execute the command inside the backticks (`afl~[0]`)
+2. Parse the output as a list of addresses (from column 0 of the `afl` command)
+3. Execute the command `p8 4` at each address found
+4. Return the combined results
+
+Examples:
+```
+p8 4 @@= 0x1000 0x2000 0x3000   # Show 4 bytes at each of the specified addresses
+p8 4 @@c:`afl~[0]`              # Show 4 bytes at every function address
+pd 10 @@c:`afl~main[0]`         # Disassemble 10 instructions at every function with 'main' in the name
+```
 
 ### Command Substitution (backticks)
 
@@ -214,6 +285,162 @@ pd | head -n 20     # Show only first 20 lines of decompilation
 ```
 
 This feature works just like POSIX shell pipes and is an alternative to using the built-in grep filter (`~`).
+
+### Output Redirection (> and >>)
+
+Command output can be redirected to files using the `>` and `>>` operators:
+
+```
+pd > decompiled.txt      # Write output to file (create or overwrite)
+pd >> decompiled.txt     # Append output to file
+```
+
+This will:
+1. Execute the left command (pd) to get its output
+2. Write that output to the specified file
+3. Return a message indicating success or failure
+
+Examples:
+```
+pdd* > script.r2        # Save decompiled code as r2 commands to a file
+afl > functions.txt     # Save list of functions to a file
+pddj > func.json       # Save JSON output to a file
+pdj | python -m json.tool > formatted.json  # Combine pipe and redirection
+```
+
+The redirection operators work exactly like their POSIX shell counterparts:
+- `>` creates a new file or overwrites an existing file
+- `>>` creates a new file or appends to an existing file
+
+### Environment Variables (%)
+
+The `%` command allows you to manage environment variables:
+
+```
+%              # List all environment variables
+%VAR           # Get the value of environment variable VAR
+%VAR=value     # Set environment variable VAR to value
+%*             # Show environment variables as r2 commands
+%j             # Show environment variables in JSON format
+```
+
+Examples:
+```
+%              # List all environment variables
+%PATH          # Show the PATH environment variable
+%TMPDIR=/tmp   # Set the TMPDIR environment variable
+%j             # List environment variables in JSON format
+```
+
+Note: Setting environment variables may not work on all JVM implementations due to security restrictions.
+
+## R2Num Expression Evaluator
+
+The `R2Num` class provides a powerful expression evaluation system compatible with radare2's RNum API. It allows for parsing and evaluating complex numeric expressions including:
+
+- Different number bases (decimal, hexadecimal, binary, octal)
+- Symbol resolution via callbacks
+- Memory access with bracketed expressions
+- Arithmetic and bitwise operations
+- Parenthesized expressions
+
+### Architecture
+
+The R2Num implementation consists of:
+
+1. **R2Num** - Core expression evaluator class
+2. **R2NumCallback** - Interface for resolving symbol names
+3. **R2MemoryReader** - Interface for reading memory values
+4. **R2NumException** - Exception class for evaluation errors
+5. **R2GhidraMemoryReader** - Ghidra implementation of the memory reader
+6. **R2GhidraSymbolCallback** - Ghidra implementation of symbol resolver
+7. **R2NumUtil** - Utility class for easier integration
+
+### Features
+
+- **Number bases**: Supports decimal, hexadecimal (`0x`), binary (`0b`), and octal (`0`) prefixes
+- **Arithmetic operations**: `+`, `-`, `*`, `/`, `%`
+- **Bitwise operations**: `&`, `|`, `^`, `~`, `>>`, `<<`
+- **Symbol resolution**: Resolves symbol names like function names via callback
+- **Memory access**: Can read memory with bracketed expressions like `[address:size]`
+- **Expression composition**: Supports complex nested expressions with parentheses
+- **Configurable**: Supports different endianness and word sizes
+
+### Expression Syntax
+
+- **Basic literals**: `123`, `0x7f`, `0b1010`, `01234`
+- **Symbol names**: `main`, `entry0`, etc.
+- **Arithmetic**: `1+2*3`, `(1+2)*3`
+- **Memory access**: `[0x100]`, `[main+0x10:4]`
+- **Combined**: `main+0x10`, `[main+0x10]+4`, etc.
+
+### Using R2Num in Command Handlers
+
+Here's how to use the R2Num system in your command handlers:
+
+```java
+import ghidrar2web.repl.num.R2NumUtil;
+import ghidrar2web.repl.num.R2NumException;
+
+public class YourCommandHandler implements R2CommandHandler {
+    @Override
+    public String execute(R2Command command, R2Context context) throws R2CommandException {
+        // Get an expression from a command argument
+        String expr = command.getFirstArgument("");
+        
+        try {
+            // Evaluate the expression
+            long value = R2NumUtil.evaluateExpression(context, expr);
+            
+            // Use the value
+            return "Result: 0x" + Long.toHexString(value) + "\n";
+        } catch (R2NumException e) {
+            throw new R2CommandException("Invalid expression: " + e.getMessage());
+        }
+    }
+}
+```
+
+### Advanced Usage
+
+For more complex scenarios, you can create and configure the R2Num instance directly:
+
+```java
+import ghidrar2web.repl.num.R2Num;
+import ghidrar2web.repl.num.R2NumCallback;
+import ghidrar2web.repl.num.R2MemoryReader;
+
+// Create the evaluator
+R2Num num = new R2Num(context);
+
+// Set a custom symbol resolver
+num.setCallback(new R2NumCallback() {
+    @Override
+    public Long resolveSymbol(String name) {
+        // Your custom symbol resolution logic
+        if (name.equals("custom_symbol")) {
+            return 0x12345678L;
+        }
+        return null;
+    }
+});
+
+// Set a custom memory reader
+num.setMemoryReader(new R2MemoryReader() {
+    @Override
+    public long readMemory(long address, int size, boolean littleEndian) throws Exception {
+        // Your custom memory reading logic
+        return 0x42;
+    }
+});
+
+// Configure the evaluator
+num.setLittleEndian(true);
+num.setDefaultSize(8); // 8-byte/64-bit reads
+
+// Evaluate an expression
+long result = num.getValue("custom_symbol + [0x1000:4]");
+```
 
 ## Example Command Handler
 

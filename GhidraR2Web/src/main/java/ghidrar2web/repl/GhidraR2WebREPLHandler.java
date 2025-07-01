@@ -10,6 +10,7 @@ import com.sun.net.httpserver.HttpHandler;
 
 import ghidra.program.model.address.Address;
 import ghidrar2web.repl.handlers.R2DecompileCommandHandler;
+import ghidrar2web.repl.handlers.R2EnvCommandHandler;
 import ghidrar2web.repl.handlers.R2HelpCommandHandler;
 import ghidrar2web.repl.handlers.R2SeekCommandHandler;
 import ghidrar2web.repl.handlers.R2ShellCommandHandler;
@@ -56,6 +57,11 @@ public class GhidraR2WebREPLHandler implements HttpHandler {
         R2ShellCommandHandler shellHandler = new R2ShellCommandHandler();
         commandRegistry.put("!", shellHandler);
         repl.registerCommand("!", shellHandler);
+        
+        // Environment variable commands
+        R2EnvCommandHandler envHandler = new R2EnvCommandHandler();
+        commandRegistry.put("%", envHandler);
+        repl.registerCommand("%", envHandler);
         
         // Add more command handlers here as they're implemented
         // ...

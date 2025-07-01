@@ -19,6 +19,7 @@ public class R2Command {
     private String subcommand;
     private List<String> arguments;
     private Address temporaryAddress;
+    private String multiAddressInfo; // For @@ command syntax
 
     /**
      * Create a new R2Command
@@ -33,6 +34,7 @@ public class R2Command {
         this.subcommand = subcommand;
         this.arguments = arguments != null ? arguments : Collections.emptyList();
         this.temporaryAddress = temporaryAddress;
+        this.multiAddressInfo = null;
     }
 
     /**
@@ -167,6 +169,27 @@ public class R2Command {
      */
     public boolean subcommandStartsWith(String str) {
         return subcommand.startsWith(str);
+    }
+    
+    /**
+     * Check if this command uses the @@ syntax for multiple addresses
+     */
+    public boolean hasMultiAddressInfo() {
+        return multiAddressInfo != null && !multiAddressInfo.isEmpty();
+    }
+    
+    /**
+     * Get the multi-address information (part after @@) for this command
+     */
+    public String getMultiAddressInfo() {
+        return multiAddressInfo;
+    }
+    
+    /**
+     * Set the multi-address information for this command
+     */
+    public void setMultiAddressInfo(String info) {
+        this.multiAddressInfo = info;
     }
     
     /**
