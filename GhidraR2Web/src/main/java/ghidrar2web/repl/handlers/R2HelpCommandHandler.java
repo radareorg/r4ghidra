@@ -38,6 +38,11 @@ public class R2HelpCommandHandler implements R2CommandHandler {
             throw new R2CommandException("Not a help command");
         }
 
+        // Check for recursive help suffix (?*)
+        if (command.hasRecursiveHelpSuffix()) {
+            return handleRecursiveHelp(command);
+        }
+
         // Get the subcommand without any suffix
         String subcommand = command.getSubcommandWithoutSuffix();
         
@@ -106,31 +111,68 @@ public class R2HelpCommandHandler implements R2CommandHandler {
             JSONObject json = new JSONObject();
             JSONArray commands = new JSONArray();
             
-            // First line is usually the usage line
-            if (lines.length > 0) {
-                json.put("usage", lines[0]);
-            }
-            
-            // Remaining lines are individual command descriptions
-            for (int i = 1; i < lines.length; i++) {
-                String line = lines[i].trim();
-                if (!line.isEmpty()) {
-                    JSONObject cmdHelp = new JSONObject();
-                    // Try to extract command name and description
-                    int dashPos = line.indexOf(" - ");
-                    if (dashPos > 0) {
-                        String cmdName = line.substring(0, dashPos).trim();
-                        String desc = line.substring(dashPos + 3).trim();
-                        cmdHelp.put("command", cmdName);
-                        cmdHelp.put("description", desc);
-                    } else {
-                        cmdHelp.put("text", line);
+            // Special handling for recursive help
+            if (command.hasRecursiveHelpSuffix()) {
+                json.put("type", "recursive_help");
+                JSONObject sections = new JSONObject();
+                
+                String currentSection = null;
+                JSONArray currentSectionCommands = null;
+                
+                for (String line : lines) {
+                    // Check for section markers === command ===
+                    if (line.startsWith("===") && line.endsWith("===")) {
+                        // Extract section name
+                        String section = line.substring(3, line.length() - 3).trim();
+                        currentSection = section;
+                        currentSectionCommands = new JSONArray();
+                        sections.put(section, currentSectionCommands);
+                    } else if (currentSection != null && !line.trim().isEmpty()) {
+                        // Add line to current section
+                        JSONObject cmdHelp = new JSONObject();
+                        int dashPos = line.indexOf(" - ");
+                        if (dashPos > 0) {
+                            String cmdName = line.substring(0, dashPos).trim();
+                            String desc = line.substring(dashPos + 3).trim();
+                            cmdHelp.put("command", cmdName);
+                            cmdHelp.put("description", desc);
+                        } else {
+                            cmdHelp.put("text", line);
+                        }
+                        currentSectionCommands.put(cmdHelp);
                     }
-                    commands.put(cmdHelp);
                 }
+                
+                json.put("sections", sections);
+            } else {
+                // Standard help output
+                // First line is usually the usage line
+                if (lines.length > 0) {
+                    json.put("usage", lines[0]);
+                }
+                
+                // Remaining lines are individual command descriptions
+                for (int i = 1; i < lines.length; i++) {
+                    String line = lines[i].trim();
+                    if (!line.isEmpty()) {
+                        JSONObject cmdHelp = new JSONObject();
+                        // Try to extract command name and description
+                        int dashPos = line.indexOf(" - ");
+                        if (dashPos > 0) {
+                            String cmdName = line.substring(0, dashPos).trim();
+                            String desc = line.substring(dashPos + 3).trim();
+                            cmdHelp.put("command", cmdName);
+                            cmdHelp.put("description", desc);
+                        } else {
+                            cmdHelp.put("text", line);
+                        }
+                        commands.put(cmdHelp);
+                    }
+                }
+                
+                json.put("commands", commands);
             }
             
-            json.put("commands", commands);
             return json.toString() + "\n";
         } else if (command.hasSuffix('q')) {
             // Quiet output - just command names, one per line
@@ -265,16 +307,183 @@ public class R2HelpCommandHandler implements R2CommandHandler {
         }
     }
     
+    /**
+     * Handle recursive help command (?*)
+     * 
+     * @param command The command with recursive help suffix
+     * @return The recursive help output
+     * @throws R2CommandException If there's an error getting recursive help
+     */
+    private String handleRecursiveHelp(R2Command command) throws R2CommandException {
+        StringBuilder allHelp = new StringBuilder();
+        
+        // Check if there's an argument for filtering specific commands
+        String filter = command.getArgumentCount() > 0 ? command.getFirstArgument("") : null;
+        
+        // Get recursive help for all commands
+        if (filter != null && !filter.isEmpty()) {
+            // If a filter is provided, only show help for matching commands
+            allHelp.append("Recursive help for commands matching: " + filter + "\n\n");
+        } else {
+            allHelp.append("Recursive help for all commands\n\n");
+        }
+        
+        // Generate recursive help for each command handler
+        for (Map.Entry<String, R2CommandHandler> entry : commandRegistry.entrySet()) {
+            String prefix = entry.getKey();
+            R2CommandHandler handler = entry.getValue();
+            
+            // Skip if filtering and prefix doesn't match
+            if (filter != null && !filter.isEmpty() && !prefix.contains(filter)) {
+                // We'll still search within the help content later
+                String help = handler.getHelp();
+                if (!help.contains(filter)) {
+                    continue;
+                }
+            }
+            
+            // Add root command help
+            allHelp.append("=== ").append(prefix).append(" ===\n");
+            allHelp.append(handler.getHelp()).append("\n\n");
+            
+            // Parse subcommands and add their help recursively
+            List<String> subcommands = extractSubcommands(handler.getHelp(), prefix);
+            
+            // Process each subcommand
+            for (String subcommand : subcommands) {
+                // Skip if filtering and subcommand doesn't match
+                if (filter != null && !filter.isEmpty() && !subcommand.contains(filter)) {
+                    continue;
+                }
+                
+                try {
+                    // Try to get help for this subcommand by simulating a help command
+                    // Create a dummy command to get help for this subcommand
+                    List<String> args = new ArrayList<>();
+                    args.add(prefix + subcommand);
+                    R2Command helpCmd = new R2Command("?", "", args, null);
+                    
+                    // Execute the help command and add the output
+                    String subHelp = formatHelpOutput(handler.getHelp(), helpCmd);
+                    allHelp.append("=== ").append(prefix).append(subcommand).append(" ===\n");
+                    allHelp.append(subHelp).append("\n\n");
+                    
+                    // Recursively process subcommands (to avoid infinite loops, limit the depth)
+                    processSubcommandsRecursively(allHelp, handler, prefix + subcommand, 1, 3, filter);
+                } catch (Exception e) {
+                    // Ignore errors for subcommands
+                }
+            }
+        }
+        
+        return formatHelpOutput(allHelp.toString(), command);
+    }
+    
+    /**
+     * Process subcommands recursively with depth limiting to avoid infinite loops
+     * 
+     * @param output The output buffer
+     * @param handler The command handler
+     * @param baseCommand The base command for which to find subcommands
+     * @param currentDepth Current recursion depth
+     * @param maxDepth Maximum recursion depth
+     * @param filter Optional filter string
+     */
+    private void processSubcommandsRecursively(
+            StringBuilder output, 
+            R2CommandHandler handler, 
+            String baseCommand, 
+            int currentDepth, 
+            int maxDepth, 
+            String filter) {
+        
+        // Stop if we've reached the maximum depth
+        if (currentDepth >= maxDepth) {
+            return;
+        }
+        
+        // Extract subcommands for this base command
+        List<String> subcommands = extractSubcommands(handler.getHelp(), baseCommand);
+        
+        // Process each subcommand
+        for (String subcommand : subcommands) {
+            // Skip if filtering and subcommand doesn't match
+            if (filter != null && !filter.isEmpty() && !subcommand.contains(filter)) {
+                continue;
+            }
+            
+            String fullCommand = baseCommand + subcommand;
+            
+            try {
+                // Add subcommand help
+                output.append("=== ").append(fullCommand).append(" ===\n");
+                output.append(handler.getHelp()).append("\n\n");
+                
+                // Recursively process further subcommands
+                processSubcommandsRecursively(output, handler, fullCommand, currentDepth + 1, maxDepth, filter);
+            } catch (Exception e) {
+                // Ignore errors for subcommands
+            }
+        }
+    }
+    
+    /**
+     * Extract subcommands from help text
+     * 
+     * @param helpText The help text to parse
+     * @param prefix The command prefix to look for
+     * @return A list of subcommands
+     */
+    private List<String> extractSubcommands(String helpText, String prefix) {
+        List<String> subcommands = new ArrayList<>();
+        
+        // Parse help text line by line
+        String[] lines = helpText.split("\n");
+        
+        for (String line : lines) {
+            // Skip empty lines and the usage line
+            if (line.trim().isEmpty() || line.startsWith("Usage:")) {
+                continue;
+            }
+            
+            // Look for lines with format: "prefix+subcommand - description"
+            if (line.trim().startsWith(prefix)) {
+                // Extract the command part
+                String cmdPart = line.trim();
+                int dashPos = cmdPart.indexOf(" - ");
+                
+                if (dashPos > 0) {
+                    cmdPart = cmdPart.substring(0, dashPos).trim();
+                    
+                    // Extract the subcommand part (remove the prefix)
+                    if (cmdPart.length() > prefix.length()) {
+                        String subcommand = cmdPart.substring(prefix.length());
+                        
+                        // Skip if it contains brackets (optional parts) or spaces (arguments)
+                        if (!subcommand.contains("[") && !subcommand.contains(" ")) {
+                            subcommands.add(subcommand);
+                        }
+                    }
+                }
+            }
+        }
+        
+        return subcommands;
+    }
+
     @Override
     public String getHelp() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Usage: ?[V|v|vi][jq] [command|expr]\n");
+        sb.append("Usage: ?[V|v|vi|*][jq] [command|expr]\n");
         sb.append(" ?             show general help\n");
         sb.append(" ? [cmd]       show help for specific command\n");
         sb.append(" ?V            show version information\n");
         sb.append(" ?v expr       evaluate expression and show result in hexadecimal\n");
         sb.append(" ?vi expr      evaluate expression and show result in decimal\n");
         sb.append(" ? expr        evaluate expression and show result in multiple formats\n");
+        sb.append(" ?*            recursively show help for all commands\n");
+        sb.append(" ?* [filter]   recursively show help for commands matching filter\n");
+        sb.append(" ?*~pattern    recursively show help for all commands, then filter lines matching pattern\n");
         sb.append(" ?j            show help in JSON format\n");
         sb.append(" ?q            list only command names\n");
         return sb.toString();

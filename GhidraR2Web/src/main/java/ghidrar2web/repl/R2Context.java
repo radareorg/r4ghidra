@@ -8,6 +8,8 @@ import ghidra.program.model.address.Address;
 import ghidrar2web.GhidraR2State;
 import ghidrar2web.repl.config.R2EvalConfig;
 import ghidrar2web.repl.config.R2EvalChangeListener;
+import ghidrar2web.repl.filesystem.R2FileSystem;
+import ghidrar2web.repl.filesystem.R2SandboxedFileSystem;
 
 /**
  * Context for R2 command execution
@@ -21,6 +23,15 @@ import ghidrar2web.repl.config.R2EvalChangeListener;
  * - User-defined variables
  */
 public class R2Context {
+    // Sandbox permission flags
+    public static final int R_SANDBOX_GRAIN_NONE = 0;
+    public static final int R_SANDBOX_GRAIN_SOCKET = 1;
+    public static final int R_SANDBOX_GRAIN_DISK = 2;
+    public static final int R_SANDBOX_GRAIN_FILES = 4;
+    public static final int R_SANDBOX_GRAIN_EXEC = 8;
+    public static final int R_SANDBOX_GRAIN_ENVIRON = 16;
+    public static final int R_SANDBOX_GRAIN_ALL = 16|8|4|2|1;
+    
     // Ghidra API reference
     private FlatProgramAPI api;
     
@@ -41,6 +52,12 @@ public class R2Context {
     
     // Configuration manager
     private R2EvalConfig evalConfig;
+    
+    // Sandbox permissions
+    private int sandboxFlags;
+    
+    // File system abstraction
+    private R2FileSystem fileSystem;
 
     /**
      * Create a new context with default values
@@ -60,6 +77,21 @@ public class R2Context {
         
         // Set up default listeners
         setupConfigListeners();
+        
+        // By default, enable all sandbox restrictions
+        this.sandboxFlags = R_SANDBOX_GRAIN_ALL;
+        
+        // Initialize the file system with sandbox restrictions
+        this.fileSystem = new R2SandboxedFileSystem(this);
+    }
+    
+    /**
+     * Create a new context with specified sandbox restrictions
+     */
+    public R2Context(int sandboxFlags) {
+        this();
+        this.sandboxFlags = sandboxFlags;
+        this.fileSystem = new R2SandboxedFileSystem(this);
     }
     
     /**
@@ -246,5 +278,36 @@ public class R2Context {
      */
     public R2EvalConfig getEvalConfig() {
         return evalConfig;
+    }
+    
+    /**
+     * Get the current sandbox flags
+     */
+    public int getSandboxFlags() {
+        return sandboxFlags;
+    }
+    
+    /**
+     * Set the sandbox flags
+     */
+    public void setSandboxFlags(int flags) {
+        this.sandboxFlags = flags;
+    }
+    
+    /**
+     * Check if a specific sandbox restriction is enabled
+     * 
+     * @param flag The flag to check
+     * @return true if the restriction is enabled, false otherwise
+     */
+    public boolean isSandboxed(int flag) {
+        return (sandboxFlags & flag) != 0;
+    }
+    
+    /**
+     * Get the file system abstraction
+     */
+    public R2FileSystem getFileSystem() {
+        return fileSystem;
     }
 }

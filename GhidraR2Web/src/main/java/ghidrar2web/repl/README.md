@@ -11,6 +11,7 @@ The R2REPL architecture consists of:
 3. **R2CommandHandler** - Interface for all command handlers
 4. **R2Context** - Context object for command execution, manages state like current seek, blocksize, etc.
 5. **Command Handlers** - Individual implementations of R2CommandHandler for each command (located in the handlers package)
+6. **R2FileSystem** - Filesystem abstraction with sandbox protection and in-memory files
 6. **R2Num** - Advanced expression evaluator that provides radare2-compatible number parsing and calculations
 
 ## Features
@@ -33,6 +34,8 @@ The R2REPL architecture consists of:
 - **Help system** - Built-in help for all commands
 - **Context management** - Clean separation of state and command execution
 - **Extensibility** - Easy to add new commands by implementing R2CommandHandler
+- **Sandboxed filesystem** - Secure file operations with configurable sandbox settings
+- **In-memory files** - Support for $-prefixed in-memory files that work regardless of sandbox restrictions
 - **Expression evaluation** - Powerful R2Num expression evaluator supporting different number bases, symbols, memory access, and math operations
 
 ## Integrating with GhidraR2Web
@@ -322,6 +325,52 @@ pdj | python -m json.tool > formatted.json  # Combine pipe and redirection
 The redirection operators work exactly like their POSIX shell counterparts:
 - `>` creates a new file or overwrites an existing file
 - `>>` creates a new file or appends to an existing file
+
+## Filesystem and Sandbox
+
+The R2REPL includes a filesystem abstraction with sandbox protection and support for in-memory files.
+
+### Sandbox Settings
+
+The sandbox settings are stored in the R2Context and control which filesystem operations are allowed. The following flags are available:
+
+```java
+R_SANDBOX_GRAIN_NONE = 0     // No restrictions
+R_SANDBOX_GRAIN_SOCKET = 1   // Restrict network access
+R_SANDBOX_GRAIN_DISK = 2     // Restrict disk write operations
+R_SANDBOX_GRAIN_FILES = 4    // Restrict file read/write operations
+R_SANDBOX_GRAIN_EXEC = 8     // Restrict shell command execution
+R_SANDBOX_GRAIN_ENVIRON = 16 // Restrict environment variable access
+R_SANDBOX_GRAIN_ALL = 31     // All restrictions enabled
+```
+
+By default, all sandbox restrictions are enabled. To modify sandbox settings:
+
+```java
+// Disable all sandbox restrictions
+context.setSandboxFlags(R2Context.R_SANDBOX_GRAIN_NONE);
+
+// Allow file operations but restrict everything else
+context.setSandboxFlags(R2Context.R_SANDBOX_GRAIN_ALL & ~R2Context.R_SANDBOX_GRAIN_FILES);
+```
+
+### In-Memory Files
+
+Files whose paths start with `$` are treated as in-memory files. These files are stored in memory and are accessible regardless of sandbox settings. In-memory files are particularly useful for:
+
+- Temporary storage of command outputs
+- Sharing data between commands
+- Working in restricted environments where filesystem access is disabled
+
+Examples:
+
+```
+pd > $decompiled           # Store decompilation output in memory as "decompiled"
+cat $decompiled            # Read the stored content
+grepr eax $decompiled      # Search for "eax" in the stored content
+```
+
+In-memory files are stored in a simple flat structure (no directories) and are cleared when the R2Context is destroyed.
 
 ### Environment Variables (%)
 

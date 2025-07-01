@@ -8,6 +8,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import ghidra.program.model.address.Address;
+import ghidrar2web.repl.filesystem.R2FileSystemException;
 
 /**
  * Radare2 REPL Implementation
@@ -554,26 +555,18 @@ public class R2REPLImpl {
         String output = executeCommand(leftCmd);
         
         try {
-            java.nio.file.Path path = java.nio.file.Paths.get(filePath);
-            
-            // Make sure the parent directory exists
-            java.nio.file.Path parent = path.getParent();
-            if (parent != null) {
-                java.nio.file.Files.createDirectories(parent);
-            }
-            
-            // Write to the file (either create/overwrite or append)
+            // Use the filesystem abstraction for file operations
             if (append) {
-                java.nio.file.Files.write(path, output.getBytes(),
-                        java.nio.file.StandardOpenOption.CREATE,
-                        java.nio.file.StandardOpenOption.APPEND);
+                context.getFileSystem().appendFile(filePath, output);
             } else {
-                java.nio.file.Files.write(path, output.getBytes());
+                context.getFileSystem().writeFile(filePath, output);
             }
             
             return "Output " + (append ? "appended to" : "written to") + " file: " + filePath;
         } catch (java.io.IOException e) {
             throw new R2CommandException("Error writing to file: " + e.getMessage());
+        } catch (ghidrar2web.repl.filesystem.R2FileSystemException e) {
+            throw new R2CommandException(e.getMessage());
         }
     }
     

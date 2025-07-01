@@ -61,12 +61,18 @@ public class R2Command {
      * - ',': CSV/table output
      * - '?': help/documentation
      * - 'q': quiet output
+     * - '?*': recursive help documentation
      * 
      * @return The command suffix character, or null if none
      */
     public Character getCommandSuffix() {
         if (subcommand == null || subcommand.isEmpty()) {
             return null;
+        }
+        
+        // Special case for "?*" suffix (recursive help)
+        if (subcommand.endsWith("?*")) {
+            return '*';  // Return '*' to indicate recursive help
         }
         
         char lastChar = subcommand.charAt(subcommand.length() - 1);
@@ -86,6 +92,11 @@ public class R2Command {
      * @return The subcommand with any suffix character removed
      */
     public String getSubcommandWithoutSuffix() {
+        // Special case for "?*" suffix
+        if (subcommand != null && subcommand.endsWith("?*")) {
+            return subcommand.substring(0, subcommand.length() - 2);
+        }
+        
         Character suffix = getCommandSuffix();
         if (suffix == null) {
             return subcommand;
@@ -103,6 +114,15 @@ public class R2Command {
     public boolean hasSuffix(char suffix) {
         Character commandSuffix = getCommandSuffix();
         return commandSuffix != null && commandSuffix == suffix;
+    }
+    
+    /**
+     * Check if the command has the recursive help suffix (?*)
+     * 
+     * @return true if the command has the recursive help suffix, false otherwise
+     */
+    public boolean hasRecursiveHelpSuffix() {
+        return subcommand != null && subcommand.endsWith("?*");
     }
 
     /**
