@@ -22,6 +22,7 @@ The R2REPL architecture consists of:
   - `'cmd` for literal command interpretation (no special character processing)
   - `.cmd` for script execution (execute command and interpret its output as r2 commands)
   - `!cmd` for executing shell commands
+  - `~pattern` for filtering output (grep, JSON pretty print, line counting)
   - Output formats with suffixes: `j` (JSON), `*` (r2 commands), `,` (CSV), `?` (help), `q` (quiet)
 - **Error handling** - Structured error reporting and exception system
 - **Help system** - Built-in help for all commands
@@ -87,6 +88,26 @@ if (command.hasSuffix('j')) {
     // Generate r2 commands
 }
 ```
+
+### Output Filtering (~)
+
+Commands can be filtered using the `~` operator:
+
+```
+pdd~main     # Filter decompilation output for lines containing "main"
+afl~?        # Count the number of functions
+pdj~{}       # Pretty print JSON output from pdj
+```
+
+Types of filters:
+- `~pattern` - Grep filter, only shows lines matching the pattern
+- `~{}` - Pretty-prints JSON output
+- `~?` - Counts lines in output (like wc -l)
+
+Pattern modifiers:
+- `^pattern` - Match at start of line
+- `pattern$` - Match at end of line
+- `pat*tern` - Glob-style wildcard matching
 
 ### Shell Command Execution (!)
 

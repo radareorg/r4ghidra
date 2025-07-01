@@ -53,6 +53,22 @@ public class R2REPLImpl {
         }
         
         try {
+            // Check for output filter (~)
+            String[] cmdAndFilter = R2OutputFilter.extractCommandAndFilter(cmdStr);
+            if (cmdAndFilter != null) {
+                String cmd = cmdAndFilter[0];
+                String filter = cmdAndFilter[1];
+                
+                // Special case for help command
+                if (cmd.isEmpty() && filter.equals("?")) {
+                    return R2OutputFilter.getFilterHelp();
+                }
+                
+                // Execute the command and apply the filter
+                String result = executeCommand(cmd);
+                return R2OutputFilter.applyFilter(result, filter);
+            }
+            
             // Handle special case for dot commands (.)
             if (cmdStr.startsWith(".")) {
                 return executeDotCommand(cmdStr);
