@@ -53,9 +53,9 @@ public class R2GhidraSymbolCallback implements R2NumCallback {
         
         try {
             // Try to resolve as a function name
-            Function function = context.getAPI().getFunctionByName(name);
-            if (function != null) {
-                return function.getEntryPoint().getUnsignedOffset();
+            List<Function> functions = context.getAPI().getGlobalFunctions(name);
+            if (!functions.isEmpty()) {
+                return functions.get(0).getEntryPoint().getUnsignedOffset();
             }
             
             // Try to resolve as a symbol
