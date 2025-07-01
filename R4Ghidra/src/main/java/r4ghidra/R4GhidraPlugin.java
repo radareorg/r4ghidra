@@ -16,6 +16,8 @@
 package r4ghidra;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.*;
 
@@ -34,6 +36,9 @@ import ghidra.framework.plugintool.util.PluginStatus;
 import ghidra.program.flatapi.FlatProgramAPI;
 import ghidra.program.model.listing.Program;
 import ghidra.util.HelpLocation;
+import r4ghidra.repl.R2CommandHandler;
+import r4ghidra.repl.handlers.*;
+import r4ghidra.repl.R2REPLImpl;
 
 /**
  * Provide class-level documentation that describes what this plugin does.
@@ -50,6 +55,8 @@ import ghidra.util.HelpLocation;
 public class R4GhidraPlugin extends ProgramPlugin {
 
 	MyProvider provider;
+	R4CommandShellProvider shellProvider;
+	private List<R2CommandHandler> commandHandlers;
 	
 
 	/**
@@ -68,18 +75,65 @@ public class R4GhidraPlugin extends ProgramPlugin {
 		String topicName = this.getClass().getPackage().getName();
 		String anchorName = "HelpAnchor";
 		provider.setHelpLocation(new HelpLocation(topicName, anchorName));
+		
+		// Initialize command handlers list
+		commandHandlers = new ArrayList<>();
 	}
 
 	@Override
 	public void init() {
 		super.init();
-		// Acquire services if necessary
+		
+		// Initialize command handlers
+		initCommandHandlers();
+	}
+	
+	/**
+	 * Initialize all command handlers for R4Ghidra
+	 */
+	private void initCommandHandlers() {
+		// Register all command handlers
+		commandHandlers.add(new R2SeekCommandHandler());
+		commandHandlers.add(new R2PrintCommandHandler());
+		commandHandlers.add(new R2BlocksizeCommandHandler());
+		commandHandlers.add(new R2DecompileCommandHandler());
+		commandHandlers.add(new R2EnvCommandHandler());
+		commandHandlers.add(new R2EvalCommandHandler());
+		commandHandlers.add(new R2ShellCommandHandler());
+		
+		// Note: R2HelpCommandHandler will be created in the CommandShellProvider
+		// because it needs a reference to the command registry
+		
+		// Add more handlers as needed
+	}
+	
+	/**
+	 * Get the registered command handlers
+	 * 
+	 * @return List of command handlers
+	 */
+	public List<R2CommandHandler> getCommandHandlers() {
+		return commandHandlers;
 	}
 	
 	@Override
 	protected void programOpened(Program program) {
 		R4GhidraState.api = new FlatProgramAPI(program);
 		R4GhidraState.r2Seek = R4GhidraState.api.toAddr(0);
+		
+		// Create the command shell when a program is opened
+		if (shellProvider == null) {
+			shellProvider = new R4CommandShellProvider(this, "R4Ghidra Command Shell");
+		}
+	}
+	
+	@Override
+	protected void programClosed(Program program) {
+		// Dispose the command shell when program is closed
+		if (shellProvider != null) {
+			shellProvider.close();
+			shellProvider = null;
+		}
 	}
 
 	// If provider is desired, it is recommended to move it to its own file
@@ -88,10 +142,26 @@ public class R4GhidraPlugin extends ProgramPlugin {
 		private JPanel panel;
 		private DockingAction startAction;
 		private DockingAction stopAction;
+		private DockingAction commandShellAction;
 
 		public MyProvider(Plugin plugin, String owner) {
 			super(plugin.getTool(), owner, owner);
 			createActions();
+		}
+		
+		/**
+		 * Shows the R4Ghidra command shell
+		 */
+		private void showCommandShell() {
+			// Get the plugin directly from the dockingTool
+			PluginTool pluginTool = (PluginTool)dockingTool;
+			R4GhidraPlugin plugin = pluginTool.getService(R4GhidraPlugin.class);
+			
+			if (plugin != null && plugin.shellProvider != null) {
+				pluginTool.showComponentProvider(plugin.shellProvider, true);
+			} else {
+				OkDialog.showInfo("R4Ghidra Command Shell", "Please open a program first to use the command shell.");
+			}
 		}
 
 		// Customize actions
@@ -143,13 +213,36 @@ public class R4GhidraPlugin extends ProgramPlugin {
 		            MenuData.NO_MNEMONIC,               // Mnemonic
 		            "1"                                 // Menu Subgroup
 		        ));
+			// Create the command shell action
+			commandShellAction = new DockingAction("R4Ghidra Command Shell Action", getName()) {
+				@Override
+				public void actionPerformed(ActionContext context) {
+					showCommandShell();
+				}
+			};
+			
+			commandShellAction.setMenuBarData(new MenuData(
+		            new String[] {                      // Menu Path
+		                ToolConstants.MENU_TOOLS,
+		                "R4Ghidra",
+		                "Open Command Shell"
+		            },
+		            null,                               // Icon
+		            "r4ghidra",                      // Menu Group
+		            MenuData.NO_MNEMONIC,               // Mnemonic
+		            "1"                                 // Menu Subgroup
+		        ));
+			
 			//action.setToolBarData(new ToolBarData(Icons.ADD_ICON, null));
 			startAction.setEnabled(true);
 			startAction.markHelpUnnecessary();
 			stopAction.setEnabled(true);
 			stopAction.markHelpUnnecessary();
+			commandShellAction.setEnabled(true);
+			commandShellAction.markHelpUnnecessary();
 			dockingTool.addAction(startAction);
 			dockingTool.addAction(stopAction);
+			dockingTool.addAction(commandShellAction);
 		}
 
 		@Override
