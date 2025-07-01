@@ -57,6 +57,7 @@ public class R4GhidraPlugin extends ProgramPlugin {
 	MyProvider provider;
 	R4CommandShellProvider shellProvider;
 	private List<R2CommandHandler> commandHandlers;
+	private boolean shellProviderAdded = false;
 	
 
 	/**
@@ -157,10 +158,19 @@ public class R4GhidraPlugin extends ProgramPlugin {
 			PluginTool pluginTool = (PluginTool)dockingTool;
 			R4GhidraPlugin plugin = pluginTool.getService(R4GhidraPlugin.class);
 			
-			if (plugin != null && plugin.shellProvider != null) {
+			if (plugin != null) {
+				// Create the shell provider if it doesn't exist
+				if (plugin.shellProvider == null) {
+					plugin.shellProvider = new R4CommandShellProvider(plugin, "R4Ghidra Command Shell");
+				}
+				
+				// Add the component to the tool if not already added
+				if (!plugin.shellProviderAdded) {
+					pluginTool.addComponentProvider(plugin.shellProvider, true);
+					plugin.shellProviderAdded = true;
+				}
+				
 				pluginTool.showComponentProvider(plugin.shellProvider, true);
-			} else {
-				OkDialog.showInfo("R4Ghidra Command Shell", "Please open a program first to use the command shell.");
 			}
 		}
 
