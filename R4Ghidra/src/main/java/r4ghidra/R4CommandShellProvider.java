@@ -53,6 +53,10 @@ public class R4CommandShellProvider extends ComponentProvider {
      */
     public R4CommandShellProvider(R4GhidraPlugin plugin, String title) {
         super(plugin.getTool(), title, title);
+        
+        // Add this provider to the Window menu
+        setWindowMenuGroup("R4Ghidra");
+        
         repl = new R2REPLImpl();
         
         // Register all command handlers from the plugin

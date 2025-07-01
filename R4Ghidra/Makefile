@@ -21,7 +21,7 @@ all:
 endif
 
 clean:
-	rm -rf .gradle dist
+	rm -rf .gradle dist build
 
 indent:
 	gradle spotlessApply
