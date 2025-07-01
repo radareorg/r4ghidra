@@ -6,6 +6,7 @@ import java.net.InetSocketAddress;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+import r4ghidra.repl.R4GhidraREPLHandler;
 
 
 public class R4GhidraServer {
@@ -28,6 +29,7 @@ public class R4GhidraServer {
 		server = HttpServer.create(new InetSocketAddress(port), 0);
 		server.createContext("/", new MyRootHandler());
 		server.createContext("/cmd", new R4GhidraCmdHandler());
+		server.createContext("/cmd", new R4GhidraREPLHandler());
 		server.setExecutor(null); // creates a default executor
 		server.start();	
 		

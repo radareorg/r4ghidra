@@ -9,6 +9,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
 import ghidra.program.model.address.Address;
+import r4ghidra.repl.handlers.R2BlocksizeCommandHandler;
 import r4ghidra.repl.handlers.R2EnvCommandHandler;
 import r4ghidra.repl.handlers.R2EvalCommandHandler;
 import r4ghidra.repl.handlers.R2HelpCommandHandler;
@@ -68,6 +69,11 @@ public class R4GhidraREPLHandler implements HttpHandler {
         R2EvalCommandHandler evalHandler = new R2EvalCommandHandler();
         commandRegistry.put("e", evalHandler);
         repl.registerCommand("e", evalHandler);
+        
+        // Blocksize commands
+        R2BlocksizeCommandHandler blocksizeHandler = new R2BlocksizeCommandHandler();
+        commandRegistry.put("b", blocksizeHandler);
+        repl.registerCommand("b", blocksizeHandler);
         
         // Add more command handlers here as they're implemented
         // ...
