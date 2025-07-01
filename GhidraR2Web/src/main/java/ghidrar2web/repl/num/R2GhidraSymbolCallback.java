@@ -60,7 +60,10 @@ public class R2GhidraSymbolCallback implements R2NumCallback {
             
             // Try to resolve as a symbol
             SymbolTable symbolTable = context.getAPI().getCurrentProgram().getSymbolTable();
-            List<Symbol> symbols = symbolTable.getSymbols(name);
+            java.util.ArrayList<Symbol> symbols = new java.util.ArrayList<>();
+            
+            // Convert SymbolIterator to List<Symbol>
+            symbolTable.getSymbols(name).forEach(symbols::add);
             
             if (!symbols.isEmpty()) {
                 // Return the first matching symbol's address
