@@ -20,6 +20,11 @@ all:
 	GHIDRA_INSTALL_DIR="$(GHIDRA_INSTALL_DIR)" gradle buildExtension
 endif
 
+# XXX not working
+headless:
+	$(GHIDRA_PATH)/support/analyzeHeadless /tmp/ test -process /bin/ls -postScript ghidra_scripts/r4ghidra_headless.py 
+
+
 clean:
 	rm -rf .gradle dist build
 
@@ -29,4 +34,4 @@ indent:
 mrproper: clean
 	rm -rf "$(HOME)/.gradle"
 
-.PHONY: all clean mrproper indent
+.PHONY: all clean mrproper indent headless
