@@ -29,6 +29,11 @@
 // application.gradle.version property in <GHIDRA_INSTALL_DIR>/Ghidra/application.properties
 // for the correction version of Gradle to use for the Ghidra installation you specify.
 
+plugins {
+	// Add Spotless plugin for code formatting
+	id 'com.diffplug.spotless' version '6.22.0'
+}
+
 //----------------------START "DO NOT MODIFY" SECTION------------------------------
 def ghidraInstallDir
 
@@ -61,6 +66,16 @@ dependencies {
 	// Any external dependencies added here will automatically be copied to the lib/ directory when
 	// this extension is built.	
 	implementation 'org.json:json:20240205'
+}
+
+// Configuration for Spotless code formatting
+spotless {
+	java {
+		// Use Google's Java formatter
+		googleJavaFormat()
+		// Format all Java files in the project
+		target 'src/main/java/**/*.java'
+	}
 }
 
 // Exclude additional files from the built extension

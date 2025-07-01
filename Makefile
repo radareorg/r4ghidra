@@ -1,6 +1,6 @@
 FCNADDR=1000011e8
 TESTBIN=$(shell pwd)/test/ls
-SCRIPT=GhidraR2WebServer.java
+SCRIPT=R4GhidraServer.java
 
 all:
 	@echo Run make install

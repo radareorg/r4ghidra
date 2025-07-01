@@ -52,8 +52,8 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Stack;
 
-public class GhidraR2WebServer extends GhidraScript {
-  static GhidraR2WebServer ghidra = null;
+public class R4GhidraServer extends GhidraScript {
+  static R4GhidraServer ghidra = null;
   static HttpServer server = null;
   static int blocksize = 128;
 

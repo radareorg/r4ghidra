@@ -23,7 +23,10 @@ endif
 clean:
 	rm -rf .gradle dist
 
+indent:
+	gradle spotlessApply
+
 mrproper: clean
 	rm -rf "$(HOME)/.gradle"
 
-.PHONY: all clean mrproper
+.PHONY: all clean mrproper indent
