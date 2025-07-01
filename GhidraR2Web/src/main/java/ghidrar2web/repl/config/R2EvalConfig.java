@@ -1,0 +1,223 @@
+package ghidrar2web.repl.config;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+
+import ghidrar2web.repl.R2Context;
+
+/**
+ * Configuration management for R2 eval variables
+ * 
+ * This class manages the configuration variables for the R2 environment,
+ * similar to how r2's "e" command works. It provides variable storage,
+ * type conversion, change listeners, and default values.
+ */
+public class R2EvalConfig {
+    
+    // The parent context
+    private R2Context context;
+    
+    // Map of configuration variables
+    private Map<String, String> config;
+    
+    // Map of variable change listeners
+    private Map<String, R2EvalChangeListener> listeners;
+    
+    /**
+     * Create a new configuration manager
+     * 
+     * @param context The R2 context to associate with
+     */
+    public R2EvalConfig(R2Context context) {
+        this.context = context;
+        this.config = new HashMap<>();
+        this.listeners = new HashMap<>();
+        
+        // Initialize with default values
+        initDefaults();
+    }
+    
+    /**
+     * Set default configuration values
+     */
+    private void initDefaults() {
+        // Architecture and assembly settings
+        set("asm.arch", "x86", false);
+        set("asm.bits", "32", false);
+        set("asm.cpu", "default", false);
+        set("asm.bytes", "16", false);
+        
+        // Configuration settings
+        set("cfg.bigendian", "false", false);
+        set("cfg.endian", "little", false);
+        set("cfg.sandbox", "false", false);
+        set("cfg.sandbox.grain", "rw", false);
+        
+        // Screen settings
+        set("scr.color", "1", false);
+        set("scr.prompt", "true", false);
+        
+        // Directory settings
+        set("dir.tmp", "/tmp", false);
+        
+        // HTTP settings
+        set("http.port", "8080", false);
+        
+        // IO settings
+        set("io.cache", "false", false);
+    }
+    
+    /**
+     * Register a change listener for a variable
+     * 
+     * @param key The variable name
+     * @param listener The listener to call when the variable changes
+     */
+    public void registerListener(String key, R2EvalChangeListener listener) {
+        listeners.put(key, listener);
+    }
+    
+    /**
+     * Get all configuration keys
+     * 
+     * @return Set of all configuration keys
+     */
+    public Set<String> getKeys() {
+        return config.keySet();
+    }
+    
+    /**
+     * Get all configuration variables as a sorted map
+     * 
+     * @return Sorted map of all configuration variables
+     */
+    public Map<String, String> getAll() {
+        return new TreeMap<>(config);
+    }
+    
+    /**
+     * Get all configuration variables that start with a prefix
+     * 
+     * @param prefix The prefix to match
+     * @return Map of matching configuration variables
+     */
+    public Map<String, String> getByPrefix(String prefix) {
+        Map<String, String> result = new TreeMap<>();
+        
+        for (Map.Entry<String, String> entry : config.entrySet()) {
+            if (entry.getKey().startsWith(prefix)) {
+                result.put(entry.getKey(), entry.getValue());
+            }
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Set a configuration variable
+     * 
+     * @param key The variable name
+     * @param value The value to set
+     * @return true if the value was changed, false otherwise
+     */
+    public boolean set(String key, String value) {
+        return set(key, value, true);
+    }
+    
+    /**
+     * Set a configuration variable with option to trigger listeners
+     * 
+     * @param key The variable name
+     * @param value The value to set
+     * @param triggerListeners Whether to trigger change listeners
+     * @return true if the value was changed, false otherwise
+     */
+    public boolean set(String key, String value, boolean triggerListeners) {
+        // Normalize key
+        key = key.trim().toLowerCase();
+        
+        // Check if the value is actually changing
+        String oldValue = config.get(key);
+        if (value.equals(oldValue)) {
+            return false;  // No change
+        }
+        
+        // Update the value
+        config.put(key, value);
+        
+        // Trigger change listener if applicable
+        if (triggerListeners && listeners.containsKey(key)) {
+            listeners.get(key).onChange(key, oldValue, value);
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Get a configuration variable
+     * 
+     * @param key The variable name
+     * @return The value, or empty string if not found
+     */
+    public String get(String key) {
+        return config.getOrDefault(key.trim().toLowerCase(), "");
+    }
+    
+    /**
+     * Check if a configuration variable exists
+     * 
+     * @param key The variable name
+     * @return true if the variable exists, false otherwise
+     */
+    public boolean contains(String key) {
+        return config.containsKey(key.trim().toLowerCase());
+    }
+    
+    /**
+     * Get a configuration variable as a boolean
+     * 
+     * @param key The variable name
+     * @return The boolean value, or false if not a valid boolean
+     */
+    public boolean getBoolean(String key) {
+        String value = get(key);
+        
+        // Check for true/false
+        if (value.equalsIgnoreCase("true") || value.equals("1")) {
+            return true;
+        }
+        
+        // Everything else is false
+        return false;
+    }
+    
+    /**
+     * Get a configuration variable as an integer
+     * 
+     * @param key The variable name
+     * @return The integer value, or 0 if not a valid integer
+     */
+    public int getInt(String key) {
+        try {
+            return Integer.parseInt(get(key));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+    
+    /**
+     * Get a configuration variable as a long
+     * 
+     * @param key The variable name
+     * @return The long value, or 0 if not a valid long
+     */
+    public long getLong(String key) {
+        try {
+            return Long.parseLong(get(key));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+}

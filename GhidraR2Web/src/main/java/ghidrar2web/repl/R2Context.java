@@ -6,6 +6,8 @@ import java.util.Map;
 import ghidra.program.flatapi.FlatProgramAPI;
 import ghidra.program.model.address.Address;
 import ghidrar2web.GhidraR2State;
+import ghidrar2web.repl.config.R2EvalConfig;
+import ghidrar2web.repl.config.R2EvalChangeListener;
 
 /**
  * Context for R2 command execution
@@ -36,6 +38,9 @@ public class R2Context {
     
     // User-defined variables
     private Map<String, String> variables;
+    
+    // Configuration manager
+    private R2EvalConfig evalConfig;
 
     /**
      * Create a new context with default values
@@ -49,6 +54,65 @@ public class R2Context {
         this.lastErrorCode = 0;
         this.lastErrorMessage = "";
         this.variables = new HashMap<>();
+        
+        // Initialize the eval config
+        this.evalConfig = new R2EvalConfig(this);
+        
+        // Set up default listeners
+        setupConfigListeners();
+    }
+    
+    /**
+     * Set up listeners for configuration variables
+     */
+    private void setupConfigListeners() {
+        // Listen for asm.bits changes
+        evalConfig.registerListener("asm.bits", new R2EvalChangeListener() {
+            @Override
+            public void onChange(String key, String oldValue, String newValue) {
+                // Nothing to do for now, but in a real implementation
+                // this would update the disassembler's bit mode
+            }
+        });
+        
+        // Listen for block size changes
+        evalConfig.registerListener("asm.bytes", new R2EvalChangeListener() {
+            @Override
+            public void onChange(String key, String oldValue, String newValue) {
+                try {
+                    int newSize = Integer.parseInt(newValue);
+                    setBlockSize(newSize);
+                } catch (NumberFormatException e) {
+                    // Ignore invalid values
+                }
+            }
+        });
+        
+        // Listen for endian changes
+        evalConfig.registerListener("cfg.bigendian", new R2EvalChangeListener() {
+            @Override
+            public void onChange(String key, String oldValue, String newValue) {
+                // Synchronize with cfg.endian
+                if (newValue.equals("true") || newValue.equals("1")) {
+                    evalConfig.set("cfg.endian", "big", false);  // Avoid circular updates
+                } else {
+                    evalConfig.set("cfg.endian", "little", false);  // Avoid circular updates
+                }
+            }
+        });
+        
+        // Listen for endian changes (alternate syntax)
+        evalConfig.registerListener("cfg.endian", new R2EvalChangeListener() {
+            @Override
+            public void onChange(String key, String oldValue, String newValue) {
+                // Synchronize with cfg.bigendian
+                if (newValue.equalsIgnoreCase("big")) {
+                    evalConfig.set("cfg.bigendian", "true", false);  // Avoid circular updates
+                } else {
+                    evalConfig.set("cfg.bigendian", "false", false);  // Avoid circular updates
+                }
+            }
+        });
     }
     
     /**
@@ -83,6 +147,9 @@ public class R2Context {
         
         // Update global state for backwards compatibility
         GhidraR2State.blockSize = size;
+        
+        // Update config value to stay in sync
+        evalConfig.set("asm.bytes", Integer.toString(size), false); // Avoid circular updates
     }
     
     /**
@@ -172,5 +239,12 @@ public class R2Context {
      */
     public boolean hasVariable(String name) {
         return variables.containsKey(name);
+    }
+    
+    /**
+     * Get the configuration manager
+     */
+    public R2EvalConfig getEvalConfig() {
+        return evalConfig;
     }
 }

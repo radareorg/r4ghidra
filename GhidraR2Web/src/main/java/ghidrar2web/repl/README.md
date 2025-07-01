@@ -107,6 +107,10 @@ pdj~{}       # Pretty print JSON output from pdj
 
 Types of filters:
 - `~pattern` - Grep filter, only shows lines matching the pattern
+- `~pattern1,pattern2` - Filter lines matching any pattern (OR logic)
+- `~&pattern1,pattern2` - Filter lines matching all patterns (AND logic)
+- `~!pattern` - Negation filter, only shows lines NOT matching the pattern
+- `~!pattern1,pattern2` - Negation filter with OR logic, exclude lines matching any pattern
 - `~{}` - Pretty-prints JSON output
 - `~?` - Counts lines in output (like wc -l)
 
@@ -114,6 +118,13 @@ Pattern modifiers:
 - `^pattern` - Match at start of line
 - `pattern$` - Match at end of line
 - `pat*tern` - Glob-style wildcard matching
+
+Examples:
+- `pd~call` - Show only lines containing "call"
+- `pd~call,jmp` - Show lines containing either "call" OR "jmp"
+- `pd~&mov,rax` - Show lines containing both "mov" AND "rax"
+- `pd~!call` - Show lines NOT containing "call"
+- `pd~!call,jmp` - Show lines NOT containing either "call" OR "jmp"
 
 ### Shell Command Execution (!)
 

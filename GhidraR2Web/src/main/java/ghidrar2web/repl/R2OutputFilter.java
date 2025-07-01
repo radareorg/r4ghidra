@@ -122,7 +122,12 @@ public class R2OutputFilter {
      * @return The filtered output
      */
     public static String applyFilter(String output, String filter) {
-        return applyFilter(output, filter, false, null, false); // Default to OR logic, no negation, no columns
+        // Check if the filter includes the ! operator for negation
+        boolean useNegation = filter != null && filter.startsWith("!");
+        // Strip the ! prefix if present
+        String actualFilter = useNegation && filter.length() > 1 ? filter.substring(1) : filter;
+        
+        return applyFilter(output, actualFilter, false, null, useNegation); // Default to OR logic, detected negation, no columns
     }
     
     /**
@@ -134,7 +139,12 @@ public class R2OutputFilter {
      * @return The filtered output
      */
     public static String applyFilter(String output, String filter, boolean useAndLogic) {
-        return applyFilter(output, filter, useAndLogic, null, false); // No columns, no negation
+        // Check if the filter includes the ! operator for negation
+        boolean useNegation = filter != null && filter.startsWith("!");
+        // Strip the ! prefix if present
+        String actualFilter = useNegation && filter.length() > 1 ? filter.substring(1) : filter;
+        
+        return applyFilter(output, actualFilter, useAndLogic, null, useNegation); // No columns, detected negation
     }
     
     /**
