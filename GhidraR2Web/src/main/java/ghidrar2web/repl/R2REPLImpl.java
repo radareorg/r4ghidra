@@ -78,6 +78,7 @@ public class R2REPLImpl {
                 String filter = cmdAndFilter[1];
                 boolean useAndLogic = Boolean.parseBoolean(cmdAndFilter[2]);
                 String columns = cmdAndFilter.length > 3 ? cmdAndFilter[3] : null;
+                boolean useNegationLogic = cmdAndFilter.length > 4 ? Boolean.parseBoolean(cmdAndFilter[4]) : false;
                 
                 // Special case for help command
                 if (cmd.isEmpty() && filter.equals("?")) {
@@ -86,7 +87,7 @@ public class R2REPLImpl {
                 
                 // Execute the command and apply the filter
                 String result = executeCommand(cmd);
-                return R2OutputFilter.applyFilter(result, filter, useAndLogic, columns);
+                return R2OutputFilter.applyFilter(result, filter, useAndLogic, columns, useNegationLogic);
             }
             
             // Handle special case for dot commands (.)

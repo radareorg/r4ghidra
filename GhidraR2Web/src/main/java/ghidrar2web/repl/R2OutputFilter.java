@@ -22,7 +22,7 @@ import org.json.JSONObject;
 public class R2OutputFilter {
     
     // Pattern for detecting filter expressions
-    private static final Pattern FILTER_PATTERN = Pattern.compile("(.*?)~(&?)(\\{\\}|\\?|([^\\s\\[]+)(\\[(\\d+(?:,\\d+)*)\\])?|\\[(\\d+(?:,\\d+)*)\\])");
+    private static final Pattern FILTER_PATTERN = Pattern.compile("(.*?)~(&?|!)(\\{\\}|\\?|([^\\s\\[]+)(\\[(\\d+(?:,\\d+)*)\\])?|\\[(\\d+(?:,\\d+)*)\\])");
     
     /**
      * Extract command and filter from a command string
@@ -47,9 +47,10 @@ public class R2OutputFilter {
         Matcher matcher = FILTER_PATTERN.matcher(cmdStr);
         if (matcher.matches()) {
             String command = matcher.group(1).trim();
-            String andOperator = matcher.group(2); // "&" or empty
+            String operator = matcher.group(2); // "&", "!" or empty
             String filter = matcher.group(3);
-            boolean isAndLogic = "&".equals(andOperator);
+            boolean isAndLogic = "&".equals(operator);
+            boolean isNegationLogic = "!".equals(operator);
             
             // Extract column specification if present
             String columns = null;
@@ -61,7 +62,7 @@ public class R2OutputFilter {
                 filter = "";  // No pattern, show all lines but filter columns
             }
             
-            return new String[] {command, filter, String.valueOf(isAndLogic), columns};
+            return new String[] {command, filter, String.valueOf(isAndLogic), columns, String.valueOf(isNegationLogic)};
         }
         
         return null;
@@ -76,7 +77,7 @@ public class R2OutputFilter {
      * @param columns Column specification (comma-separated list of column indices) or null
      * @return The filtered output
      */
-    public static String applyFilter(String output, String filter, boolean useAndLogic, String columns) {
+    public static String applyFilter(String output, String filter, boolean useAndLogic, String columns, boolean useNegationLogic) {
         // Handle empty output
         if (output == null || output.isEmpty()) {
             return "";
@@ -100,7 +101,7 @@ public class R2OutputFilter {
         // First apply grep filter if there is one
         String filteredOutput;
         if (filter != null && !filter.isEmpty()) {
-            filteredOutput = grepLines(output, filter, useAndLogic);
+            filteredOutput = grepLines(output, filter, useAndLogic, useNegationLogic);
         } else {
             filteredOutput = output;
         }
@@ -121,7 +122,7 @@ public class R2OutputFilter {
      * @return The filtered output
      */
     public static String applyFilter(String output, String filter) {
-        return applyFilter(output, filter, false, null); // Default to OR logic, no columns
+        return applyFilter(output, filter, false, null, false); // Default to OR logic, no negation, no columns
     }
     
     /**
@@ -133,7 +134,7 @@ public class R2OutputFilter {
      * @return The filtered output
      */
     public static String applyFilter(String output, String filter, boolean useAndLogic) {
-        return applyFilter(output, filter, useAndLogic, null); // No columns
+        return applyFilter(output, filter, useAndLogic, null, false); // No columns, no negation
     }
     
     /**
@@ -177,9 +178,10 @@ public class R2OutputFilter {
      * @param output The output to grep
      * @param patternStr The pattern(s) to match, comma-separated for multiple patterns
      * @param useAndLogic Whether to use AND logic (all patterns must match) instead of OR logic
+     * @param useNegationLogic Whether to use negation logic (exclude lines that match) 
      * @return The filtered output
      */
-    private static String grepLines(String output, String patternStr, boolean useAndLogic) {
+    private static String grepLines(String output, String patternStr, boolean useAndLogic, boolean useNegationLogic) {
         String[] lines = output.split("\n");
         List<String> matchedLines = new ArrayList<>();
         
@@ -194,6 +196,8 @@ public class R2OutputFilter {
         
         // Check each line against all patterns with appropriate logic
         for (String line : lines) {
+            boolean shouldAdd = false;
+            
             if (useAndLogic) {
                 // AND logic - all patterns must match
                 boolean allMatch = true;
@@ -204,18 +208,27 @@ public class R2OutputFilter {
                         break;
                     }
                 }
-                if (allMatch) {
-                    matchedLines.add(line);
-                }
+                shouldAdd = allMatch;
             } else {
                 // OR logic - at least one pattern must match
+                boolean anyMatch = false;
                 for (Pattern pattern : regexPatterns) {
                     Matcher matcher = pattern.matcher(line);
                     if (matcher.find()) {
-                        matchedLines.add(line);
+                        anyMatch = true;
                         break;
                     }
                 }
+                shouldAdd = anyMatch;
+            }
+            
+            // If using negation logic, invert the result
+            if (useNegationLogic) {
+                shouldAdd = !shouldAdd;
+            }
+            
+            if (shouldAdd) {
+                matchedLines.add(line);
             }
         }
         
@@ -318,6 +331,8 @@ public class R2OutputFilter {
         sb.append("  command~pattern                grep: filter lines matching pattern\n");
         sb.append("  command~pattern1,pattern2,...   grep: filter lines matching any pattern (OR)\n");
         sb.append("  command~&pattern1,pattern2,...  grep: filter lines matching all patterns (AND)\n");
+        sb.append("  command~!pattern               grep: filter lines NOT matching pattern (negation)\n");
+        sb.append("  command~!pattern1,pattern2,...  grep: filter lines NOT matching any pattern (negated OR)\n");
         sb.append("  command~pattern[N]              column: filter lines and show only column N\n");
         sb.append("  command~[N]                    column: show only column N from all lines\n");
         sb.append("  command~pattern[N,M,...]        column: show columns N, M, etc. from matching lines\n");
@@ -330,6 +345,7 @@ public class R2OutputFilter {
         sb.append("\nExamples:\n");
         sb.append("  pd~call,mov        show lines containing either 'call' OR 'mov'\n");
         sb.append("  pd~&mov,rax        show lines containing both 'mov' AND 'rax'\n");
+        sb.append("  pd~!call           show lines NOT containing 'call'\n");
         sb.append("  pd~mov[0]          show first column of lines containing 'mov'\n");
         sb.append("  afl~[1]            show only the second column of function list\n");
         return sb.toString();
