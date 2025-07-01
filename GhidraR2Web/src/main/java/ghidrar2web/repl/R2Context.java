@@ -78,6 +78,10 @@ public class R2Context {
         // Set up default listeners
         setupConfigListeners();
         
+        // Lock the configuration to prevent creation of new keys by users
+        // Only plugins and extensions should be able to create new keys
+        this.evalConfig.lock();
+        
         // By default, enable all sandbox restrictions
         this.sandboxFlags = R_SANDBOX_GRAIN_ALL;
         
@@ -205,7 +209,14 @@ public class R2Context {
      * Parse an address string into an Address object
      */
     public Address parseAddress(String addressStr) {
-        return api.toAddr(addressStr);
+        try {
+            // Use R2NumUtil to evaluate complex expressions
+            long addrValue = ghidrar2web.repl.num.R2NumUtil.evaluateExpression(this, addressStr);
+            return api.toAddr(addrValue);
+        } catch (ghidrar2web.repl.num.R2NumException e) {
+            // Fall back to direct conversion if expression evaluation fails
+            return api.toAddr(addressStr);
+        }
     }
     
     /**

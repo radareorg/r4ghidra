@@ -9,10 +9,10 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
 import ghidra.program.model.address.Address;
-import ghidrar2web.repl.handlers.R2DecompileCommandHandler;
 import ghidrar2web.repl.handlers.R2EnvCommandHandler;
 import ghidrar2web.repl.handlers.R2EvalCommandHandler;
 import ghidrar2web.repl.handlers.R2HelpCommandHandler;
+import ghidrar2web.repl.handlers.R2PrintCommandHandler;
 import ghidrar2web.repl.handlers.R2SeekCommandHandler;
 import ghidrar2web.repl.handlers.R2ShellCommandHandler;
 
@@ -50,9 +50,9 @@ public class GhidraR2WebREPLHandler implements HttpHandler {
         repl.registerCommand("s", seekHandler);
         
         // Print commands
-        R2DecompileCommandHandler decompileHandler = new R2DecompileCommandHandler();
-        commandRegistry.put("p", decompileHandler);
-        repl.registerCommand("p", decompileHandler);
+        R2PrintCommandHandler printHandler = new R2PrintCommandHandler();
+        commandRegistry.put("p", printHandler);
+        repl.registerCommand("p", printHandler);
         
         // Shell commands
         R2ShellCommandHandler shellHandler = new R2ShellCommandHandler();

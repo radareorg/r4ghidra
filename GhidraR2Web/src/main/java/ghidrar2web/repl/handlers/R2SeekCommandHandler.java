@@ -5,6 +5,8 @@ import ghidrar2web.repl.R2Command;
 import ghidrar2web.repl.R2CommandException;
 import ghidrar2web.repl.R2CommandHandler;
 import ghidrar2web.repl.R2Context;
+import ghidrar2web.repl.num.R2NumException;
+import ghidrar2web.repl.num.R2NumUtil;
 import org.json.JSONObject;
 
 /**
@@ -32,9 +34,13 @@ public class R2SeekCommandHandler implements R2CommandHandler {
         if (subcommand.isEmpty() && command.getArgumentCount() > 0) {
             try {
                 String addrStr = command.getFirstArgument("");
-                Address newAddr = context.parseAddress(addrStr);
+                // Use RNum API to evaluate address expressions
+                long addrValue = R2NumUtil.evaluateExpression(context, addrStr);
+                Address newAddr = context.getAPI().toAddr(addrValue);
                 context.setCurrentAddress(newAddr);
                 return formatResult(newAddr, context, command);
+            } catch (R2NumException e) {
+                throw new R2CommandException("Invalid address expression: " + e.getMessage());
             } catch (Exception e) {
                 throw new R2CommandException("Invalid address: " + command.getFirstArgument(""));
             }
@@ -46,12 +52,18 @@ public class R2SeekCommandHandler implements R2CommandHandler {
             case "b": {
                 try {
                     String offsetStr = command.getFirstArgument("1");
-                    long offset = parseNumericValue(offsetStr, 1);
+                    // Use RNum API to evaluate offset expressions
+                    long offset = R2NumUtil.evaluateExpression(context, offsetStr);
+                    if (offset <= 0) {
+                        offset = 1; // Default to 1 for non-positive values
+                    }
                     Address newAddr = context.getCurrentAddress().subtract(offset);
                     context.setCurrentAddress(newAddr);
                     return formatResult(newAddr, context, command);
+                } catch (R2NumException e) {
+                    throw new R2CommandException("Invalid offset expression: " + e.getMessage());
                 } catch (Exception e) {
-                    throw new R2CommandException("Invalid offset for 'sb' command");
+                    throw new R2CommandException("Invalid offset for 'sb' command: " + e.getMessage());
                 }
             }
             
@@ -59,12 +71,18 @@ public class R2SeekCommandHandler implements R2CommandHandler {
             case "f": {
                 try {
                     String offsetStr = command.getFirstArgument("1");
-                    long offset = parseNumericValue(offsetStr, 1);
+                    // Use RNum API to evaluate offset expressions
+                    long offset = R2NumUtil.evaluateExpression(context, offsetStr);
+                    if (offset <= 0) {
+                        offset = 1; // Default to 1 for non-positive values
+                    }
                     Address newAddr = context.getCurrentAddress().add(offset);
                     context.setCurrentAddress(newAddr);
                     return formatResult(newAddr, context, command);
+                } catch (R2NumException e) {
+                    throw new R2CommandException("Invalid offset expression: " + e.getMessage());
                 } catch (Exception e) {
-                    throw new R2CommandException("Invalid offset for 'sf' command");
+                    throw new R2CommandException("Invalid offset for 'sf' command: " + e.getMessage());
                 }
             }
             
@@ -103,31 +121,7 @@ public class R2SeekCommandHandler implements R2CommandHandler {
         }
     }
     
-    /**
-     * Parse a numeric value, which could be decimal, hexadecimal, or octal
-     */
-    private long parseNumericValue(String str, long defaultValue) {
-        if (str == null || str.isEmpty()) {
-            return defaultValue;
-        }
-        
-        try {
-            // Handle hex (0x)
-            if (str.toLowerCase().startsWith("0x")) {
-                return Long.parseLong(str.substring(2), 16);
-            }
-            
-            // Handle octal (0)
-            if (str.startsWith("0") && str.length() > 1) {
-                return Long.parseLong(str.substring(1), 8);
-            }
-            
-            // Decimal
-            return Long.parseLong(str);
-        } catch (NumberFormatException e) {
-            return defaultValue;
-        }
-    }
+    // parseNumericValue method removed as we now use R2NumUtil.evaluateExpression
 
     @Override
     public String getHelp() {

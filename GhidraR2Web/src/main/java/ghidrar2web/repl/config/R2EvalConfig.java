@@ -25,6 +25,9 @@ public class R2EvalConfig {
     // Map of variable change listeners
     private Map<String, R2EvalChangeListener> listeners;
     
+    // Lock status - when true, config options cannot be created
+    private boolean locked = false;
+    
     /**
      * Create a new configuration manager
      * 
@@ -138,6 +141,10 @@ public class R2EvalConfig {
         // Normalize key
         key = key.trim().toLowerCase();
         
+        // If configuration is locked and this is a new key, deny the operation
+        if (locked && !config.containsKey(key)) {
+            return false;  // Configuration is locked, can't create new keys
+        }
         // Check if the value is actually changing
         String oldValue = config.get(key);
         if (value.equals(oldValue)) {
@@ -185,12 +192,38 @@ public class R2EvalConfig {
         String value = get(key);
         
         // Check for true/false
-        if (value.equalsIgnoreCase("true") || value.equals("1")) {
+        if (value.equalsIgnoreCase("true") || value.equals("1") || 
+            value.equalsIgnoreCase("yes") || value.equalsIgnoreCase("on") || 
+            value.equalsIgnoreCase("y")) {
             return true;
+        }
+        
+        // Check for numeric values > 0
+        try {
+            int numValue = Integer.parseInt(value);
+            if (numValue > 0) {
+                return true;
+            }
+        } catch (NumberFormatException e) {
+            // Not a number, ignore and continue
         }
         
         // Everything else is false
         return false;
+    }
+    
+    /**
+     * Get a configuration variable as a boolean
+     * 
+     * @param key The variable name
+     * @param defaultValue The default value to return if the key doesn't exist or isn't a valid boolean
+     * @return The boolean value, or the default value if not a valid boolean
+     */
+    public boolean getBool(String key, boolean defaultValue) {
+        if (!contains(key)) {
+            return defaultValue;
+        }
+        return getBoolean(key);
     }
     
     /**
@@ -219,5 +252,30 @@ public class R2EvalConfig {
         } catch (NumberFormatException e) {
             return 0;
         }
+    }
+    
+    /**
+     * Lock the configuration to prevent creation of new keys
+     * Only existing keys can be modified after locking
+     */
+    public void lock() {
+        this.locked = true;
+    }
+    
+    /**
+     * Unlock the configuration to allow creation of new keys
+     * This should only be called by plugins or extensions
+     */
+    public void unlock() {
+        this.locked = false;
+    }
+    
+    /**
+     * Check if the configuration is locked
+     * 
+     * @return true if locked, false if unlocked
+     */
+    public boolean isLocked() {
+        return this.locked;
     }
 }

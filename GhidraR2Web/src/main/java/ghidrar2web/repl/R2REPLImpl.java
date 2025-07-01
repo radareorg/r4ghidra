@@ -642,8 +642,18 @@ public class R2REPLImpl {
             }
             
             try {
-                Address address = context.parseAddress(part.trim());
+                // Use R2NumUtil directly for complex expressions
+                long addrValue = ghidrar2web.repl.num.R2NumUtil.evaluateExpression(context, part.trim());
+                Address address = context.getAPI().toAddr(addrValue);
                 addresses.add(address);
+            } catch (ghidrar2web.repl.num.R2NumException e) {
+                try {
+                    // Fall back to direct conversion
+                    Address address = context.parseAddress(part.trim());
+                    addresses.add(address);
+                } catch (Exception ex) {
+                    // Skip invalid addresses
+                }
             } catch (Exception e) {
                 // Skip invalid addresses
             }
@@ -674,8 +684,18 @@ public class R2REPLImpl {
                 }
                 
                 try {
-                    Address address = context.parseAddress(token.trim());
+                    // Use R2NumUtil directly for complex expressions
+                    long addrValue = ghidrar2web.repl.num.R2NumUtil.evaluateExpression(context, token.trim());
+                    Address address = context.getAPI().toAddr(addrValue);
                     addresses.add(address);
+                } catch (ghidrar2web.repl.num.R2NumException e) {
+                    try {
+                        // Fall back to direct conversion
+                        Address address = context.parseAddress(token.trim());
+                        addresses.add(address);
+                    } catch (Exception ex) {
+                        // Skip tokens that are not valid addresses
+                    }
                 } catch (Exception e) {
                     // Skip tokens that are not valid addresses
                 }
