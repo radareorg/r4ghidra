@@ -8,6 +8,7 @@ import java.util.TreeMap;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import ghidra.framework.Application;
 import r4ghidra.repl.R2Command;
 import r4ghidra.repl.R2CommandException;
 import r4ghidra.repl.R2CommandHandler;
@@ -256,7 +257,7 @@ public class R2HelpCommandHandler implements R2CommandHandler {
      * Generate version information
      */
     private String getVersionInfo() {
-        return "R4Ghidra 1.0\n";
+        return "Ghidra version: " + Application.getApplicationVersion() + "\nR4Ghidra version: 1.0\n";
     }
 
     /**
