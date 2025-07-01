@@ -12,6 +12,8 @@ import ghidrar2web.repl.R2Command;
 import ghidrar2web.repl.R2CommandException;
 import ghidrar2web.repl.R2CommandHandler;
 import ghidrar2web.repl.R2Context;
+import ghidrar2web.repl.num.R2NumUtil;
+import ghidrar2web.repl.num.R2NumException;
 
 /**
  * Handler for the '?' (help) command
@@ -67,6 +69,27 @@ public class R2HelpCommandHandler implements R2CommandHandler {
             // '?V' - version information
             case "V":
                 return formatHelpOutput(getVersionInfo(), command);
+            
+            // '?v' - evaluate expression in hex
+            case "v":
+                if (command.getArgumentCount() == 0) {
+                    throw new R2CommandException("Missing expression for ?v");
+                }
+                return evaluateExpressionInHex(command.getFirstArgument(""), context);
+                
+            // '?vi' - evaluate expression in decimal
+            case "vi":
+                if (command.getArgumentCount() == 0) {
+                    throw new R2CommandException("Missing expression for ?vi");
+                }
+                return evaluateExpressionInDecimal(command.getFirstArgument(""), context);
+                
+            // Handle space after ? (e.g., '? 123') - multi-base display
+            case "":
+                if (command.getArgumentCount() > 0) {
+                    return evaluateExpressionMultiBase(command.getFirstArgument(""), context);
+                }
+                // Fall through to default for regular help
                 
             default:
                 throw new R2CommandException("Unknown help subcommand: ?" + subcommand);
@@ -190,13 +213,68 @@ public class R2HelpCommandHandler implements R2CommandHandler {
         return "GhidraR2Web 1.0\n";
     }
 
+    /**
+     * Evaluate a numeric expression and display the result in hexadecimal
+     */
+    private String evaluateExpressionInHex(String expr, R2Context context) throws R2CommandException {
+        try {
+            long value = R2NumUtil.evaluateExpression(context, expr);
+            return "0x" + Long.toHexString(value) + "\n";
+        } catch (R2NumException e) {
+            throw new R2CommandException("Error evaluating expression: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Evaluate a numeric expression and display the result in decimal
+     */
+    private String evaluateExpressionInDecimal(String expr, R2Context context) throws R2CommandException {
+        try {
+            long value = R2NumUtil.evaluateExpression(context, expr);
+            return Long.toString(value) + "\n";
+        } catch (R2NumException e) {
+            throw new R2CommandException("Error evaluating expression: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Evaluate a numeric expression and display the result in multiple bases
+     */
+    private String evaluateExpressionMultiBase(String expr, R2Context context) throws R2CommandException {
+        try {
+            long value = R2NumUtil.evaluateExpression(context, expr);
+            StringBuilder sb = new StringBuilder();
+            
+            // Display the value in different formats
+            sb.append("int32   ").append((int)value).append("\n");
+            sb.append("uint32  ").append(Integer.toUnsignedLong((int)value)).append("\n");
+            sb.append("hex     0x").append(Long.toHexString(value)).append("\n");
+            sb.append("octal   0").append(Long.toOctalString(value)).append("\n");
+            
+            // Add string representation if value is in ASCII range
+            if (value > 0 && value <= 127) {
+                sb.append("string  \"").append((char)value).append("\"\n");
+            }
+            
+            // Binary representation
+            sb.append("binary  0b").append(Long.toBinaryString(value)).append("\n");
+            
+            return sb.toString();
+        } catch (R2NumException e) {
+            throw new R2CommandException("Error evaluating expression: " + e.getMessage());
+        }
+    }
+    
     @Override
     public String getHelp() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Usage: ?[V][jq] [command]\n");
+        sb.append("Usage: ?[V|v|vi][jq] [command|expr]\n");
         sb.append(" ?             show general help\n");
         sb.append(" ? [cmd]       show help for specific command\n");
         sb.append(" ?V            show version information\n");
+        sb.append(" ?v expr       evaluate expression and show result in hexadecimal\n");
+        sb.append(" ?vi expr      evaluate expression and show result in decimal\n");
+        sb.append(" ? expr        evaluate expression and show result in multiple formats\n");
         sb.append(" ?j            show help in JSON format\n");
         sb.append(" ?q            list only command names\n");
         return sb.toString();
