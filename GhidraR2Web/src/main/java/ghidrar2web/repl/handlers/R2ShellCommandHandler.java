@@ -175,7 +175,7 @@ public class R2ShellCommandHandler implements R2CommandHandler {
         help.append("\nExamples:\n");
         help.append(" !ls            list files in current directory (interactive)\n");
         help.append(" !!ls           capture and return the output of ls\n");
-        help.append(" !!ls -la | grep \"\.java$\"   run complex shell commands and capture output\n");
+        help.append(" !!ls -la | grep \"\\.java$\"   run complex shell commands and capture output\n");
         help.append(" .!rabin2 -ri $FILE     run external tool and execute its output as r2 script\n");
         return help.toString();
     }
