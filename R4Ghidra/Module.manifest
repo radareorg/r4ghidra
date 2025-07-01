@@ -1,0 +1,5 @@
+MODULE FILE LICENSE: See the LICENSE.txt file distributed with this project.
+MODULE NAME: R4Ghidra
+MODULE VERSION: 1.0.0
+MODULE DESCRIPTION: R4Ghidra provides integration between Ghidra and Radare2
+AUTHOR: Radare2 Team

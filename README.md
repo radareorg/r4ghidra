@@ -1,4 +1,4 @@
-# ghidra-r2web
+# r4ghidra
 
 [![Build Extension](https://github.com/radareorg/ghidra-r2web/actions/workflows/gradle.yml/badge.svg)](https://github.com/radareorg/ghidra-r2web/actions/workflows/gradle.yml)
 
@@ -23,7 +23,7 @@ It's just an Ghidra plugin that starts an http server to let r2 talk to it.
 $ r2pm -i ghidra
 ```
 
-* Symlink the R2GhidraServer.java into the ghidra plugins directory
+* Symlink the R4GhidraScript.java into the ghidra plugins directory
 
 ```bash
 $ make install
