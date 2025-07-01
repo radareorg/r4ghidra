@@ -52,13 +52,13 @@ jobs:
 
     - name: Build with Gradle Wrapper
       run: gradle buildExtension
-      working-directory: ./GhidraR2Web
+      working-directory: ./R4Ghidra
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: GhidraR2Web_Ghidra_${{ matrix.ghidra }}
-        path: GhidraR2Web/dist/*.zip
+        name: R4Ghidra_Ghidra_${{ matrix.ghidra }}
+        path: R4Ghidra/dist/*.zip
 
   release:
     runs-on: "ubuntu-latest"
@@ -73,6 +73,6 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/')
       with:
         files: |
-          GhidraR2Web_Ghidra_*/*.zip
+          R4Ghidra_Ghidra_*/*.zip
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
