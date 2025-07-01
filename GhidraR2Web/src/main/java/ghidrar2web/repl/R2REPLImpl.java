@@ -98,6 +98,10 @@ public class R2REPLImpl {
             
             // Handle special case for quoted commands (')
             if (cmdStr.startsWith("'")) {
+                // Check if it's a temporary seek with '0x syntax
+                if (cmdStr.startsWith("'0x")) {
+                    return executeTemporarySeekCommand(cmdStr);
+                }
                 return executeQuotedCommand(cmdStr);
             }
             
@@ -252,6 +256,89 @@ public class R2REPLImpl {
         }
         
         return result.toString();
+    }
+    
+    /**
+     * Execute a command with temporary seek using '0x syntax.
+     * This is equivalent to the @ syntax but with no special character interpretation.
+     * Example: '0x80'pd 4 is equivalent to pd 4 @ 0x80
+     * 
+     * @param cmdStr The command string starting with '0x
+     * @return The result of the command execution
+     */
+    private String executeTemporarySeekCommand(String cmdStr) throws R2CommandException {
+        // Find the closing single quote that separates the address from the command
+        int closingQuotePos = cmdStr.indexOf("'", 1);
+        if (closingQuotePos == -1) {
+            throw new R2CommandException("Missing closing quote in '0x temporary seek syntax");
+        }
+        
+        // Extract the address (between '0x and ')
+        String addressStr = cmdStr.substring(1, closingQuotePos); // without the quotes
+        
+        // Extract the command part (after the second quote)
+        String commandStr = cmdStr.substring(closingQuotePos + 1);
+        
+        if (commandStr.isEmpty()) {
+            throw new R2CommandException("Empty command in temporary seek");
+        }
+        
+        // Parse the address
+        Address address;
+        try {
+            address = context.parseAddress(addressStr);
+        } catch (Exception e) {
+            throw new R2CommandException("Invalid address in temporary seek: " + addressStr);
+        }
+        
+        // Store the original address
+        Address originalAddress = context.getCurrentAddress();
+        
+        try {
+            // Set the temporary address
+            context.setCurrentAddress(address);
+            
+            // Execute the command as a quoted command (no special character interpretation)
+            R2Command cmd = parseCommandLiteral(commandStr);
+            return executeCommandWithHandler(cmd);
+        } finally {
+            // Restore the original address
+            context.setCurrentAddress(originalAddress);
+        }
+    }
+    
+    /**
+     * Parse a command string literally, without interpreting special characters
+     * 
+     * @param cmdStr The command string to parse
+     * @return A parsed R2Command object
+     */
+    private R2Command parseCommandLiteral(String cmdStr) throws R2CommandException {
+        if (cmdStr.isEmpty()) {
+            throw new R2CommandException("Empty command");
+        }
+        
+        String prefix = String.valueOf(cmdStr.charAt(0));
+        String subcommand = cmdStr.length() > 1 ? cmdStr.substring(1) : "";
+        
+        List<String> args = new ArrayList<>();
+        
+        // Parse arguments based on spaces, without any special character processing
+        if (subcommand.contains(" ")) {
+            int spacePos = subcommand.indexOf(" ");
+            String argsPart = subcommand.substring(spacePos).trim();
+            subcommand = subcommand.substring(0, spacePos);
+            
+            // Simple space-separated args, no processing of special chars
+            String[] argArray = argsPart.split("\\s+");
+            for (String arg : argArray) {
+                if (!arg.trim().isEmpty()) {
+                    args.add(arg.trim());
+                }
+            }
+        }
+        
+        return new R2Command(prefix, subcommand, args, null);
     }
     
     /**

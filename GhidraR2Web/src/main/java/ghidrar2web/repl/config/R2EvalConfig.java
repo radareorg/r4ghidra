@@ -130,6 +130,39 @@ public class R2EvalConfig {
     }
     
     /**
+     * Set a configuration variable with an integer value
+     * 
+     * @param key The variable name
+     * @param value The integer value to set
+     * @return true if the value was changed, false otherwise
+     */
+    public boolean set(String key, int value) {
+        return set(key, Integer.toString(value));
+    }
+    
+    /**
+     * Set a configuration variable with a long (uint64) value
+     * 
+     * @param key The variable name
+     * @param value The long value to set
+     * @return true if the value was changed, false otherwise
+     */
+    public boolean set(String key, long value) {
+        return set(key, Long.toString(value));
+    }
+    
+    /**
+     * Set a configuration variable with a boolean value
+     * 
+     * @param key The variable name
+     * @param value The boolean value to set
+     * @return true if the value was changed, false otherwise
+     */
+    public boolean set(String key, boolean value) {
+        return set(key, value ? "true" : "false");
+    }
+    
+    /**
      * Set a configuration variable with option to trigger listeners
      * 
      * @param key The variable name
