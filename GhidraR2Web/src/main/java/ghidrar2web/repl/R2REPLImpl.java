@@ -53,6 +53,16 @@ public class R2REPLImpl {
         }
         
         try {
+            // Handle special case for dot commands (.)
+            if (cmdStr.startsWith(".")) {
+                return executeDotCommand(cmdStr);
+            }
+            
+            // Handle special case for quoted commands (')
+            if (cmdStr.startsWith("'")) {
+                return executeQuotedCommand(cmdStr);
+            }
+            
             // Parse the command
             R2Command cmd = parseCommand(cmdStr);
             
@@ -75,6 +85,98 @@ public class R2REPLImpl {
         } catch (R2CommandException e) {
             return "Error: " + e.getMessage();
         }
+    }
+    
+    /**
+     * Execute a dot command (.) that runs a command and then processes its output as r2 commands
+     * 
+     * @param dotCmdStr The dot command string
+     * @return The combined result of executing all resulting commands
+     */
+    private String executeDotCommand(String dotCmdStr) throws R2CommandException {
+        // Remove the leading dot
+        String cmdStr = dotCmdStr.substring(1).trim();
+        
+        if (cmdStr.isEmpty()) {
+            throw new R2CommandException("Empty dot command");
+        }
+        
+        // Execute the command to get its output
+        String cmdOutput = executeCommand(cmdStr);
+        
+        // Process the output as a series of r2 commands
+        StringBuilder result = new StringBuilder();
+        
+        // Split by lines and execute each line as a separate command
+        String[] lines = cmdOutput.split("\\n");
+        for (String line : lines) {
+            line = line.trim();
+            if (!line.isEmpty()) {
+                // Execute the command and append its output to the result
+                try {
+                    String lineResult = executeCommand(line);
+                    if (lineResult != null && !lineResult.isEmpty()) {
+                        result.append(lineResult);
+                        // Add a newline if one isn't already present
+                        if (!lineResult.endsWith("\n")) {
+                            result.append("\n");
+                        }
+                    }
+                } catch (Exception e) {
+                    // Log the error but continue processing other lines
+                    result.append("Error executing command '")
+                          .append(line)
+                          .append("': ")
+                          .append(e.getMessage())
+                          .append("\n");
+                }
+            }
+        }
+        
+        return result.toString();
+    }
+    
+    /**
+     * Execute a command that starts with a single quote.
+     * This will process the command as a literal string without interpreting special characters.
+     * 
+     * @param quotedStr The quoted command string
+     * @return The result of the command execution
+     */
+    private String executeQuotedCommand(String quotedStr) throws R2CommandException {
+        // Remove the leading single quote
+        String cmdStr = quotedStr.substring(1);
+        
+        // Create a command object directly, no special character processing
+        if (cmdStr.isEmpty()) {
+            throw new R2CommandException("Empty quoted command");
+        }
+        
+        String prefix = String.valueOf(cmdStr.charAt(0));
+        String subcommand = cmdStr.length() > 1 ? cmdStr.substring(1) : "";
+        
+        List<String> args = new ArrayList<>();
+        
+        // Parse arguments based on spaces, without any special character processing
+        if (subcommand.contains(" ")) {
+            int spacePos = subcommand.indexOf(" ");
+            String argsPart = subcommand.substring(spacePos).trim();
+            subcommand = subcommand.substring(0, spacePos);
+            
+            // Simple space-separated args, no processing of quotes or other special chars
+            String[] argArray = argsPart.split("\\s+");
+            for (String arg : argArray) {
+                if (!arg.trim().isEmpty()) {
+                    args.add(arg.trim());
+                }
+            }
+        }
+        
+        // No temporary address or command substitution for quoted commands
+        R2Command cmd = new R2Command(prefix, subcommand, args, null);
+        
+        // Execute the command directly
+        return executeCommandWithHandler(cmd);
     }
     
     /**

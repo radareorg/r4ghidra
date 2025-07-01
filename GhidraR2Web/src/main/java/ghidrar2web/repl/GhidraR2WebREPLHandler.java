@@ -9,8 +9,10 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
 import ghidra.program.model.address.Address;
+import ghidrar2web.repl.handlers.R2DecompileCommandHandler;
 import ghidrar2web.repl.handlers.R2HelpCommandHandler;
 import ghidrar2web.repl.handlers.R2SeekCommandHandler;
+import ghidrar2web.repl.handlers.R2ShellCommandHandler;
 
 /**
  * HTTP handler that processes radare2 commands using the new REPL implementation
@@ -44,6 +46,16 @@ public class GhidraR2WebREPLHandler implements HttpHandler {
         R2SeekCommandHandler seekHandler = new R2SeekCommandHandler();
         commandRegistry.put("s", seekHandler);
         repl.registerCommand("s", seekHandler);
+        
+        // Print commands
+        R2DecompileCommandHandler decompileHandler = new R2DecompileCommandHandler();
+        commandRegistry.put("p", decompileHandler);
+        repl.registerCommand("p", decompileHandler);
+        
+        // Shell commands
+        R2ShellCommandHandler shellHandler = new R2ShellCommandHandler();
+        commandRegistry.put("!", shellHandler);
+        repl.registerCommand("!", shellHandler);
         
         // Add more command handlers here as they're implemented
         // ...

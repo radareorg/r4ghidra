@@ -19,6 +19,10 @@ The R2REPL architecture consists of:
 - **Special syntax support**:
   - `@addr` for temporary seek operations
   - `` `cmd` `` for command output substitution
+  - `'cmd` for literal command interpretation (no special character processing)
+  - `.cmd` for script execution (execute command and interpret its output as r2 commands)
+  - `!cmd` for executing shell commands
+  - Output formats with suffixes: `j` (JSON), `*` (r2 commands), `,` (CSV), `?` (help), `q` (quiet)
 - **Error handling** - Structured error reporting and exception system
 - **Help system** - Built-in help for all commands
 - **Context management** - Clean separation of state and command execution
@@ -62,6 +66,111 @@ private void registerCommandHandlers() {
 }
 ```
 
+## Command Syntax Features
+
+### Output Format Suffixes
+
+Commands can have special suffixes that determine their output format:
+
+- `j` - Output as JSON (e.g., `pdj`, `?j`, `sj`)
+- `*` - Output as radare2 commands (e.g., `pdd*`, `af*`)
+- `,` - Output as CSV/table format
+- `q` - Quiet output (minimal output, e.g., `?q`, `pddq`)
+- `?` - Show help for the command
+
+To handle these in your command implementation:
+
+```java
+if (command.hasSuffix('j')) {
+    // Generate JSON output
+} else if (command.hasSuffix('*')) {
+    // Generate r2 commands
+}
+```
+
+### Shell Command Execution (!)
+
+Commands that start with `!` execute shell commands:
+
+```
+!ls -la
+```
+
+There are two variants:
+
+- `!cmd` - Execute command and redirect output to terminal (interactive)
+- `!!cmd` - Execute command and capture output to return
+
+Examples:
+```
+!ls            # List files in current directory (interactive)
+!!ls -la       # Capture and return the output of ls
+!!grep -r "main" .  # Search for "main" in all files
+```
+
+### Dot Commands (Script Execution)
+
+Commands that start with a dot (`.`) are script execution commands:
+
+```
+.pdd*
+```
+
+This will:
+1. Execute the command after the dot (`pdd*`)
+2. Take the output from that command
+3. Execute each line of the output as a separate radare2 command
+4. Return the combined results
+
+This is useful for:
+- Running r2 commands from external scripts or files
+- Reusing the output of commands that produce r2 script output (with the `*` suffix)
+- Executing a series of commands stored in a file or another command's output
+
+### Quoted Commands
+
+Commands that start with a single quote (`'`) are treated specially:
+
+```
+'px 10 @ 0x100
+```
+
+When a command starts with a single quote:
+- Special characters like backticks, pipes, or @ are treated as literal text
+- No command substitution or temporary seek processing is performed
+- The command is parsed and executed directly
+
+This is useful for:
+- Protection against command injection
+- Faster execution with large scripts
+- Situations where special characters need to be interpreted literally
+
+### Temporary Address (@)
+
+Normal (unquoted) commands support temporary seek with the `@` syntax:
+
+```
+px @ 0x1000
+```
+
+This will:
+1. Temporarily set the current address to 0x1000
+2. Execute the command
+3. Restore the original address
+
+### Command Substitution (backticks)
+
+Normal (unquoted) commands support command substitution with backticks:
+
+```
+px `s`
+```
+
+This will:
+1. Execute the inner command (s) to get the current address
+2. Substitute the result into the outer command
+3. Execute the resulting command
+
 ## Example Command Handler
 
 Here's an example of how to implement a command handler:
@@ -73,6 +182,7 @@ import ghidrar2web.repl.R2Command;
 import ghidrar2web.repl.R2CommandException;
 import ghidrar2web.repl.R2CommandHandler;
 import ghidrar2web.repl.R2Context;
+import org.json.JSONObject;
 
 public class R2ExampleCommandHandler implements R2CommandHandler {
     @Override
@@ -82,12 +192,21 @@ public class R2ExampleCommandHandler implements R2CommandHandler {
             throw new R2CommandException("Not an example command");
         }
         
-        // Get subcommand
-        String subcommand = command.getSubcommand();
+        // Get base subcommand without suffix
+        String subcommand = command.getSubcommandWithoutSuffix();
         
         // Handle basic command with no subcommand
         if (subcommand.isEmpty()) {
-            return "Example command executed!\n";
+            // Format output based on suffix
+            if (command.hasSuffix('j')) {
+                JSONObject json = new JSONObject();
+                json.put("result", "Example command executed!");
+                return json.toString() + "\n";
+            } else if (command.hasSuffix('q')) {
+                return "executed";
+            } else {
+                return "Example command executed!\n";
+            }
         }
         
         // Handle subcommands
@@ -103,10 +222,12 @@ public class R2ExampleCommandHandler implements R2CommandHandler {
     
     @Override
     public String getHelp() {
-        return "Usage: x[12]\n" +
+        return "Usage: x[12][jq]\n" +
                " x     basic example command\n" +
                " x1    example subcommand 1\n" +
-               " x2    example subcommand 2\n";
+               " x2    example subcommand 2\n" +
+               " xj    output as JSON\n" +
+               " xq    quiet output\n";
     }
 }
 ```

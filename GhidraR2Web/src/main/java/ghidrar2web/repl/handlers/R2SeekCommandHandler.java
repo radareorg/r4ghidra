@@ -5,6 +5,7 @@ import ghidrar2web.repl.R2Command;
 import ghidrar2web.repl.R2CommandException;
 import ghidrar2web.repl.R2CommandHandler;
 import ghidrar2web.repl.R2Context;
+import org.json.JSONObject;
 
 /**
  * Handler for the 's' (seek) command
@@ -19,11 +20,12 @@ public class R2SeekCommandHandler implements R2CommandHandler {
         }
 
         // Handle the various forms of seek command
-        String subcommand = command.getSubcommand();
+        String subcommand = command.getSubcommandWithoutSuffix();
         
         // Simple 's' with no subcommand - just print current address
         if (subcommand.isEmpty() && command.getArgumentCount() == 0) {
-            return context.formatAddress(context.getCurrentAddress()) + "\n";
+            Address currentAddr = context.getCurrentAddress();
+            return formatResult(currentAddr, context, command);
         }
         
         // 's' with an address argument - set current address
@@ -32,7 +34,7 @@ public class R2SeekCommandHandler implements R2CommandHandler {
                 String addrStr = command.getFirstArgument("");
                 Address newAddr = context.parseAddress(addrStr);
                 context.setCurrentAddress(newAddr);
-                return context.formatAddress(newAddr) + "\n";
+                return formatResult(newAddr, context, command);
             } catch (Exception e) {
                 throw new R2CommandException("Invalid address: " + command.getFirstArgument(""));
             }
@@ -47,7 +49,7 @@ public class R2SeekCommandHandler implements R2CommandHandler {
                     long offset = parseNumericValue(offsetStr, 1);
                     Address newAddr = context.getCurrentAddress().subtract(offset);
                     context.setCurrentAddress(newAddr);
-                    return context.formatAddress(newAddr) + "\n";
+                    return formatResult(newAddr, context, command);
                 } catch (Exception e) {
                     throw new R2CommandException("Invalid offset for 'sb' command");
                 }
@@ -60,7 +62,7 @@ public class R2SeekCommandHandler implements R2CommandHandler {
                     long offset = parseNumericValue(offsetStr, 1);
                     Address newAddr = context.getCurrentAddress().add(offset);
                     context.setCurrentAddress(newAddr);
-                    return context.formatAddress(newAddr) + "\n";
+                    return formatResult(newAddr, context, command);
                 } catch (Exception e) {
                     throw new R2CommandException("Invalid offset for 'sf' command");
                 }
@@ -79,6 +81,25 @@ public class R2SeekCommandHandler implements R2CommandHandler {
             // Other subcommands are not supported
             default:
                 throw new R2CommandException("Unknown seek subcommand: s" + subcommand);
+        }
+    }
+    
+    /**
+     * Format the result according to the command suffix
+     */
+    private String formatResult(Address address, R2Context context, R2Command command) {
+        if (command.hasSuffix('j')) {
+            // JSON output
+            JSONObject json = new JSONObject();
+            json.put("offset", address.getOffset());
+            json.put("address", context.formatAddress(address));
+            return json.toString() + "\n";
+        } else if (command.hasSuffix('q')) {
+            // Quiet output - just the address with no newline
+            return context.formatAddress(address);
+        } else {
+            // Default output
+            return context.formatAddress(address) + "\n";
         }
     }
     
@@ -111,12 +132,14 @@ public class R2SeekCommandHandler implements R2CommandHandler {
     @Override
     public String getHelp() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Usage: s[bfpm] [addr]\n");
+        sb.append("Usage: s[bfpm][j,q] [addr]\n");
         sb.append(" s              show current address\n");
         sb.append(" s [addr]       seek to address\n");
         sb.append(" sb [delta]     seek backward delta bytes\n");
         sb.append(" sf [delta]     seek forward delta bytes\n");
         sb.append(" s- / s+        seek to previous/next location\n");
+        sb.append(" sj             show current address as JSON\n");
+        sb.append(" sq             show current address (quiet mode)\n");
         return sb.toString();
     }
 }

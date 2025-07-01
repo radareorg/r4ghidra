@@ -50,6 +50,60 @@ public class R2Command {
     }
 
     /**
+     * Get the command suffix, which is a special character at the end of the subcommand
+     * that determines the output format. Returns null if no special suffix is present.
+     * 
+     * Common suffixes in radare2:
+     * - 'j': JSON output
+     * - '*': radare2 commands output
+     * - ',': CSV/table output
+     * - '?': help/documentation
+     * - 'q': quiet output
+     * 
+     * @return The command suffix character, or null if none
+     */
+    public Character getCommandSuffix() {
+        if (subcommand == null || subcommand.isEmpty()) {
+            return null;
+        }
+        
+        char lastChar = subcommand.charAt(subcommand.length() - 1);
+        
+        // Check if the last character is one of the special suffixes
+        if (lastChar == 'j' || lastChar == '*' || lastChar == ',' || 
+            lastChar == '?' || lastChar == 'q') {
+            return lastChar;
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Get the subcommand without any special suffix character
+     * 
+     * @return The subcommand with any suffix character removed
+     */
+    public String getSubcommandWithoutSuffix() {
+        Character suffix = getCommandSuffix();
+        if (suffix == null) {
+            return subcommand;
+        }
+        
+        return subcommand.substring(0, subcommand.length() - 1);
+    }
+    
+    /**
+     * Check if the command has a specific suffix
+     * 
+     * @param suffix The suffix character to check for
+     * @return true if the command has this suffix, false otherwise
+     */
+    public boolean hasSuffix(char suffix) {
+        Character commandSuffix = getCommandSuffix();
+        return commandSuffix != null && commandSuffix == suffix;
+    }
+
+    /**
      * Get all arguments as a list
      */
     public List<String> getArguments() {

@@ -5,6 +5,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import ghidrar2web.repl.R2Command;
 import ghidrar2web.repl.R2CommandException;
@@ -34,18 +36,19 @@ public class R2HelpCommandHandler implements R2CommandHandler {
             throw new R2CommandException("Not a help command");
         }
 
-        String subcommand = command.getSubcommand();
+        // Get the subcommand without any suffix
+        String subcommand = command.getSubcommandWithoutSuffix();
         
         // '?' with no subcommand - general help
         if (subcommand.isEmpty() && command.getArgumentCount() == 0) {
-            return getGeneralHelp();
+            return formatHelpOutput(getGeneralHelp(), command);
         }
         
         // '?' with an argument - help for specific command
         if (subcommand.isEmpty() && command.getArgumentCount() > 0) {
             String cmdName = command.getFirstArgument("");
             if (cmdName.isEmpty()) {
-                return getGeneralHelp();
+                return formatHelpOutput(getGeneralHelp(), command);
             }
             
             // Get the first character as the command prefix
@@ -56,17 +59,76 @@ public class R2HelpCommandHandler implements R2CommandHandler {
                 throw new R2CommandException("Unknown command: " + prefix);
             }
             
-            return handler.getHelp();
+            return formatHelpOutput(handler.getHelp(), command);
         }
         
         // Handle help subcommands
         switch (subcommand) {
             // '?V' - version information
             case "V":
-                return getVersionInfo();
+                return formatHelpOutput(getVersionInfo(), command);
                 
             default:
                 throw new R2CommandException("Unknown help subcommand: ?" + subcommand);
+        }
+    }
+
+    /**
+     * Format help output according to the command suffix
+     */
+    private String formatHelpOutput(String helpText, R2Command command) {
+        if (command.hasSuffix('j')) {
+            // JSON output
+            String[] lines = helpText.split("\n");
+            JSONObject json = new JSONObject();
+            JSONArray commands = new JSONArray();
+            
+            // First line is usually the usage line
+            if (lines.length > 0) {
+                json.put("usage", lines[0]);
+            }
+            
+            // Remaining lines are individual command descriptions
+            for (int i = 1; i < lines.length; i++) {
+                String line = lines[i].trim();
+                if (!line.isEmpty()) {
+                    JSONObject cmdHelp = new JSONObject();
+                    // Try to extract command name and description
+                    int dashPos = line.indexOf(" - ");
+                    if (dashPos > 0) {
+                        String cmdName = line.substring(0, dashPos).trim();
+                        String desc = line.substring(dashPos + 3).trim();
+                        cmdHelp.put("command", cmdName);
+                        cmdHelp.put("description", desc);
+                    } else {
+                        cmdHelp.put("text", line);
+                    }
+                    commands.put(cmdHelp);
+                }
+            }
+            
+            json.put("commands", commands);
+            return json.toString() + "\n";
+        } else if (command.hasSuffix('q')) {
+            // Quiet output - just command names, one per line
+            StringBuilder sb = new StringBuilder();
+            String[] lines = helpText.split("\n");
+            
+            for (int i = 1; i < lines.length; i++) { // Skip the usage line
+                String line = lines[i].trim();
+                if (!line.isEmpty()) {
+                    int dashPos = line.indexOf(" - ");
+                    if (dashPos > 0) {
+                        String cmdName = line.substring(0, dashPos).trim();
+                        sb.append(cmdName).append("\n");
+                    }
+                }
+            }
+            
+            return sb.toString();
+        } else {
+            // Standard output
+            return helpText;
         }
     }
 
@@ -112,6 +174,11 @@ public class R2HelpCommandHandler implements R2CommandHandler {
         msg.append("Command syntax:\n");
         msg.append("  @[addr]     - Use temporary seek (address) for this command\n");
         msg.append("  `cmd`       - Command substitution - replace with output of cmd\n");
+        msg.append("  *           - Output as r2 commands\n");
+        msg.append("  j           - Output as JSON\n");
+        msg.append("  q           - Quiet mode (minimal output)\n");
+        msg.append("  ,           - Output as table/CSV\n");
+        msg.append("  ?           - Command help\n");
         
         return msg.toString();
     }
@@ -126,10 +193,12 @@ public class R2HelpCommandHandler implements R2CommandHandler {
     @Override
     public String getHelp() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Usage: ?[V] [command]\n");
+        sb.append("Usage: ?[V][jq] [command]\n");
         sb.append(" ?             show general help\n");
         sb.append(" ? [cmd]       show help for specific command\n");
         sb.append(" ?V            show version information\n");
+        sb.append(" ?j            show help in JSON format\n");
+        sb.append(" ?q            list only command names\n");
         return sb.toString();
     }
 }
