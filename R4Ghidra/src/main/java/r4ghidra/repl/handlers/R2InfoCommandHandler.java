@@ -113,7 +113,7 @@ public class R2InfoCommandHandler implements R2CommandHandler {
                 entryPoint = program.getImageBase();
             }
             
-		    sb.append("f entry0=" + entryPoint);
+		    sb.append("f entry0=0x" + entryPoint + "\n");
 	    } catch (Exception e) {
 		    // ignored
 	    }
