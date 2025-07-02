@@ -20,6 +20,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.*;
+import java.awt.BorderLayout;
+import java.awt.Frame;
+import javax.swing.SwingUtilities;
 
 import docking.ActionContext;
 import docking.ComponentProvider;
@@ -141,9 +144,10 @@ public class R4GhidraPlugin extends ProgramPlugin {
 	private static class MyProvider extends ComponentProvider {
 
 		private JPanel panel;
-		private DockingAction startAction;
-		private DockingAction stopAction;
-		private DockingAction commandShellAction;
+       private DockingAction startAction;
+       private DockingAction stopAction;
+       private DockingAction commandShellAction;
+       private DockingAction settingsAction;
 
 		public MyProvider(Plugin plugin, String owner) {
 			super(plugin.getTool(), owner, owner);
@@ -159,18 +163,30 @@ public class R4GhidraPlugin extends ProgramPlugin {
 			R4GhidraPlugin plugin = pluginTool.getService(R4GhidraPlugin.class);
 			
 			if (plugin != null) {
-				// Create the shell provider if it doesn't exist
-				if (plugin.shellProvider == null) {
-					plugin.shellProvider = new R4CommandShellProvider(plugin, "R4Ghidra Command Shell");
+				try {
+					// Create the shell provider if it doesn't exist
+					if (plugin.shellProvider == null) {
+						plugin.shellProvider = new R4CommandShellProvider(plugin, "R4Ghidra Command Shell");
+					}
+					
+					// Add the component to the tool if not already added
+					if (!plugin.shellProviderAdded) {
+						pluginTool.addComponentProvider(plugin.shellProvider, true);
+						plugin.shellProviderAdded = true;
+					}
+					
+					// Show as component provider and ensure visibility
+					pluginTool.showComponentProvider(plugin.shellProvider, true);
+					
+					// Ensure the console is visible by bringing it to front
+					plugin.shellProvider.toFront();
+
+				} catch (Exception e) {
+					System.err.println("Error showing R4Ghidra command shell: " + e.getMessage());
+					e.printStackTrace();
+					// Show error in GUI dialog
+					docking.widgets.OkDialog.showError("R4Ghidra Error", "Error opening command shell: " + e.getMessage());
 				}
-				
-				// Add the component to the tool if not already added
-				if (!plugin.shellProviderAdded) {
-					pluginTool.addComponentProvider(plugin.shellProvider, true);
-					plugin.shellProviderAdded = true;
-				}
-				
-				pluginTool.showComponentProvider(plugin.shellProvider, true);
 			}
 		}
 
@@ -250,14 +266,52 @@ public class R4GhidraPlugin extends ProgramPlugin {
 			stopAction.markHelpUnnecessary();
 			commandShellAction.setEnabled(true);
 			commandShellAction.markHelpUnnecessary();
-			dockingTool.addAction(startAction);
-			dockingTool.addAction(stopAction);
-			dockingTool.addAction(commandShellAction);
+            dockingTool.addAction(startAction);
+            dockingTool.addAction(stopAction);
+            dockingTool.addAction(commandShellAction);
+            // Action to open settings dialog
+            settingsAction = new DockingAction("R4Ghidra Settings", getName()) {
+                @Override
+                public void actionPerformed(ActionContext context) {
+                    showSettingsDialog();
+                }
+            };
+            settingsAction.setMenuBarData(new MenuData(
+                new String[] {
+                    ToolConstants.MENU_TOOLS,
+                    "R4Ghidra",
+                    "Settings..."
+                },
+                null,
+                "r4ghidra",
+                MenuData.NO_MNEMONIC,
+                "2"
+            ));
+            settingsAction.setEnabled(true);
+            settingsAction.markHelpUnnecessary();
+            dockingTool.addAction(settingsAction);
 		}
 
 		@Override
 		public JComponent getComponent() {
 			return panel;
 		}
+        /**
+         * Shows the settings dialog for R4Ghidra.
+         */
+        private void showSettingsDialog() {
+            PluginTool pluginTool = (PluginTool) dockingTool;
+            Frame owner = pluginTool.getToolFrame();
+            SwingUtilities.invokeLater(() -> {
+                JDialog dialog = new JDialog(owner, "R4Ghidra Settings", true);
+                dialog.getContentPane().setLayout(new BorderLayout());
+                JPanel panel = new JPanel(new BorderLayout());
+                panel.add(new JLabel("Configure R4Ghidra server settings here."), BorderLayout.CENTER);
+                dialog.getContentPane().add(panel);
+                dialog.pack();
+                dialog.setLocationRelativeTo(owner);
+                dialog.setVisible(true);
+            });
+        }
 	}
 }
