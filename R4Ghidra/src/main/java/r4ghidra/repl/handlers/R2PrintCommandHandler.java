@@ -8,6 +8,7 @@ import org.json.JSONObject;
 
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.CodeUnit;
+import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.Listing;
 import ghidra.program.model.symbol.Symbol;
@@ -43,6 +44,12 @@ public class R2PrintCommandHandler implements R2CommandHandler {
                 return executePdCommand(command, context);
             case "x":
                 return executePxCommand(command, context);
+            case "8f":
+                return executeP8fCommand(command, context);
+            case "xf":
+                return executePxfCommand(command, context);
+            case "df":
+                return executePdfCommand(command, context);
             default:
                 throw new R2CommandException("Unknown print subcommand: p" + subcommand);
         }
@@ -109,6 +116,40 @@ public class R2PrintCommandHandler implements R2CommandHandler {
     }
     
     /**
+     * Execute the p8f command to print hexadecimal bytes using function size
+     */
+    private String executeP8fCommand(R2Command command, R2Context context) throws R2CommandException {
+        // Get the current address
+        Address address = context.getCurrentAddress();
+        if (address == null) {
+            throw new R2CommandException("Current address is not set");
+        }
+        
+        try {
+            // Get the function at the current address
+            Function function = context.getAPI().getFunctionContaining(address);
+            if (function == null) {
+                throw new R2CommandException("No function at the current address");
+            }
+            
+            // Get the function size
+            int functionSize = (int) function.getBody().getNumAddresses();
+            
+            // Read bytes from memory using function size
+            byte[] bytes = context.getAPI().getBytes(address, functionSize);
+            
+            // Format output based on suffix
+            if (command.hasSuffix('j')) {
+                return formatP8Json(bytes);
+            } else {
+                return formatP8Text(bytes);
+            }
+        } catch (Exception e) {
+            throw new R2CommandException("Error reading function bytes: " + e.getMessage());
+        }
+    }
+    
+    /**
      * Execute the pd command to print disassembly
      */
     private String executePdCommand(R2Command command, R2Context context) throws R2CommandException {
@@ -131,7 +172,8 @@ public class R2PrintCommandHandler implements R2CommandHandler {
             throw new R2CommandException("Current address is not set");
         }
         
-        boolean showBytes = context.getEvalConfig().getBoolean("asm.bytes");
+        // Number of bytes to display per instruction (0 to disable bytes)
+        int asmBytes = context.getEvalConfig().getInt("asm.bytes");
         
         try {
             // Get the listing
@@ -172,13 +214,15 @@ public class R2PrintCommandHandler implements R2CommandHandler {
                 // Get instruction text
                 String disasm = instr.toString();
                 
-                // Create disassembled instruction
-                DisassembledInstruction disasmInstr = new DisassembledInstruction();
-                disasmInstr.address = currentAddr.getOffset();
-                disasmInstr.size = instr.getLength();
-                disasmInstr.bytes = bytes;
-                disasmInstr.disasm = disasm;
-                disasmInstr.label = label;
+            // Create disassembled instruction
+            DisassembledInstruction disasmInstr = new DisassembledInstruction();
+            disasmInstr.address = currentAddr.getOffset();
+            disasmInstr.size = instr.getLength();
+            disasmInstr.bytes = bytes;
+            disasmInstr.disasm = disasm;
+            disasmInstr.label = label;
+            // Capture end-of-line comment if present
+            disasmInstr.comment = instr.getComment(CodeUnit.EOL_COMMENT);
                 
                 instructions.add(disasmInstr);
                 
@@ -190,7 +234,7 @@ public class R2PrintCommandHandler implements R2CommandHandler {
             if (command.hasSuffix('j')) {
                 return formatPdJson(instructions);
             } else {
-                return formatPdText(instructions, showBytes);
+                return formatPdText(instructions, asmBytes);
             }
         } catch (Exception e) {
             throw new R2CommandException("Error disassembling: " + e.getMessage());
@@ -200,33 +244,43 @@ public class R2PrintCommandHandler implements R2CommandHandler {
     /**
      * Format disassembled instructions as text
      */
-    private String formatPdText(List<DisassembledInstruction> instructions, boolean showBytes) {
+    private String formatPdText(List<DisassembledInstruction> instructions, int asmBytes) {
         StringBuilder sb = new StringBuilder();
-        
+        int bytesFieldWidth = asmBytes > 0 ? (asmBytes * 3 - 1) : 0;
+
         for (DisassembledInstruction instr : instructions) {
             // Add label if present
             if (instr.label != null) {
                 sb.append(instr.label).append(":\n");
             }
-            
             // Format address
-            sb.append(String.format("  0x%08x      ", instr.address));
-            
+            sb.append(String.format("0x%08x  ", instr.address));
             // Add bytes if requested
-            if (showBytes) {
-                sb.append(bytesToHex(instr.bytes));
-                // Pad with spaces to align instructions
-                int bytesWidth = 20;  // Fixed width for bytes
-                int bytesLen = instr.bytes.length * 2;
-                for (int i = bytesLen; i < bytesWidth; i++) {
-                    sb.append(" ");
+            if (asmBytes > 0) {
+                byte[] bytes = instr.bytes;
+                int count = Math.min(bytes.length, asmBytes);
+                StringBuilder byteSb = new StringBuilder();
+                for (int i = 0; i < count; i++) {
+                    byteSb.append(String.format("%02x", bytes[i] & 0xFF));
+                    if (i < count - 1) {
+                        byteSb.append(" ");
+                    }
                 }
+                int padLength = bytesFieldWidth - byteSb.length();
+                for (int i = 0; i < padLength; i++) {
+                    byteSb.append(" ");
+                }
+                sb.append(byteSb.toString());
+                sb.append("  ");
             }
-            
             // Add disassembly
-            sb.append(instr.disasm).append("\n");
+            sb.append(instr.disasm);
+            // Add comment if present
+            if (instr.comment != null && !instr.comment.isEmpty()) {
+                sb.append(" ; ").append(instr.comment);
+            }
+            sb.append("\n");
         }
-        
         return sb.toString();
     }
     
@@ -295,6 +349,38 @@ public class R2PrintCommandHandler implements R2CommandHandler {
     }
     
     /**
+     * Execute the pxf command to display a hexdump using function size
+     */
+    private String executePxfCommand(R2Command command, R2Context context) throws R2CommandException {
+        // Get the current address
+        Address baseAddr = context.getCurrentAddress();
+        if (baseAddr == null) {
+            throw new R2CommandException("Current address is not set");
+        }
+        
+        try {
+            // Get the function at the current address
+            Function function = context.getAPI().getFunctionContaining(baseAddr);
+            if (function == null) {
+                throw new R2CommandException("No function at the current address");
+            }
+            
+            // Get the function size
+            int functionSize = (int) function.getBody().getNumAddresses();
+            
+            // Read bytes from memory using function size
+            byte[] bytes = context.getAPI().getBytes(baseAddr, functionSize);
+            
+            if (command.hasSuffix('j')) {
+                return formatPxJson(bytes, baseAddr, context);
+            }
+            return formatPxText(bytes, baseAddr, context);
+        } catch (Exception e) {
+            throw new R2CommandException("Error reading function memory: " + e.getMessage());
+        }
+    }
+    
+    /**
      * Format hexdump as text with address, hex bytes, and ASCII
      */
     private String formatPxText(byte[] bytes, Address baseAddr, R2Context context) {
@@ -328,6 +414,92 @@ public class R2PrintCommandHandler implements R2CommandHandler {
             sb.append("\n");
         }
         return sb.toString();
+    }
+    
+    /**
+     * Execute the pdf command to disassemble using function size
+     */
+    private String executePdfCommand(R2Command command, R2Context context) throws R2CommandException {
+        // Get the current address
+        Address address = context.getCurrentAddress();
+        if (address == null) {
+            throw new R2CommandException("Current address is not set");
+        }
+        
+        try {
+            // Get the function at the current address
+            Function function = context.getAPI().getFunctionContaining(address);
+            if (function == null) {
+                throw new R2CommandException("No function at the current address");
+            }
+            
+            // Get the listing
+            Listing listing = context.getAPI().getCurrentProgram().getListing();
+            SymbolTable symbolTable = context.getAPI().getCurrentProgram().getSymbolTable();
+            
+            // Get instructions in the function
+            List<DisassembledInstruction> instructions = new ArrayList<>();
+            Address currentAddr = function.getEntryPoint();
+            Address maxFunctionAddr = function.getBody().getMaxAddress();
+            
+            // Number of bytes to display per instruction (0 to disable bytes)
+            int asmBytes = context.getEvalConfig().getInt("asm.bytes");
+            
+            while (currentAddr != null && currentAddr.compareTo(maxFunctionAddr) <= 0) {
+                Instruction instr = listing.getInstructionAt(currentAddr);
+                if (instr == null) {
+                    // No more instructions
+                    break;
+                }
+                
+                // Get symbol at this address
+                Symbol[] symbols = symbolTable.getSymbols(currentAddr);
+                String label = null;
+                if (symbols.length > 0) {
+                    for (Symbol sym : symbols) {
+                        // Prefer function symbols
+                        if (sym.getSymbolType() == SymbolType.FUNCTION) {
+                            label = sym.getName();
+                            break;
+                        }
+                    }
+                    if (label == null) {
+                        // If no function symbol, use the first one
+                        label = symbols[0].getName();
+                    }
+                }
+                
+                // Get instruction bytes
+                byte[] bytes = instr.getBytes();
+                
+                // Get instruction text
+                String disasm = instr.toString();
+                
+                // Create disassembled instruction
+                DisassembledInstruction disasmInstr = new DisassembledInstruction();
+                disasmInstr.address = currentAddr.getOffset();
+                disasmInstr.size = instr.getLength();
+                disasmInstr.bytes = bytes;
+                disasmInstr.disasm = disasm;
+                disasmInstr.label = label;
+                // Capture end-of-line comment if present
+                disasmInstr.comment = instr.getComment(CodeUnit.EOL_COMMENT);
+                
+                instructions.add(disasmInstr);
+                
+                // Move to next instruction
+                currentAddr = instr.getMaxAddress().next();
+            }
+            
+            // Format output based on suffix
+            if (command.hasSuffix('j')) {
+                return formatPdJson(instructions);
+            } else {
+                return formatPdText(instructions, asmBytes);
+            }
+        } catch (Exception e) {
+            throw new R2CommandException("Error disassembling function: " + e.getMessage());
+        }
     }
     
     /**
@@ -365,18 +537,25 @@ public class R2PrintCommandHandler implements R2CommandHandler {
         byte[] bytes;
         String disasm;
         String label;
+        String comment;
     }
 
     @Override
     public String getHelp() {
         StringBuilder help = new StringBuilder();
-        help.append("Usage: p[8|d|x][j] [count]\n");
+        help.append("Usage: p[8|d|x][f|j] [count]\n");
         help.append(" p8 [len]     print hexadecimal bytes\n");
         help.append(" p8j [len]    print hexadecimal bytes as json array\n");
+        help.append(" p8f          print hexadecimal bytes for current function\n");
+        help.append(" p8fj         print hexadecimal bytes for current function as json\n");
         help.append(" px [len]     print hexdump (addr bytes ascii)\n");
         help.append(" pxj [len]    print hexdump as json array\n");
+        help.append(" pxf          print hexdump of current function\n");
+        help.append(" pxfj         print hexdump of current function as json\n");
         help.append(" pd [n]       print disassembly with n instructions\n");
         help.append(" pdj [n]      print disassembly as json\n");
+        help.append(" pdf          print disassembly of current function\n");
+        help.append(" pdfj         print disassembly of current function as json\n");
         help.append("\nExamples:\n");
         help.append(" p8 16        print 16 bytes in hex\n");
         help.append(" p8 0x10      print 16 bytes in hex (using hex number)\n");
@@ -387,6 +566,7 @@ public class R2PrintCommandHandler implements R2CommandHandler {
         help.append(" pd           print 10 disassembled instructions\n");
         help.append(" pd 20        print 20 disassembled instructions\n");
         help.append(" pdj 5        print 5 disassembled instructions as json\n");
+        help.append(" pdf          print disassembly of current function\n");
         return help.toString();
     }
 }

@@ -1,6 +1,7 @@
 package r4ghidra.repl.handlers;
 
 import ghidra.program.model.address.Address;
+import ghidra.program.model.listing.Function;
 import r4ghidra.repl.R2Command;
 import r4ghidra.repl.R2CommandException;
 import r4ghidra.repl.R2CommandHandler;
@@ -73,14 +74,28 @@ public class R2SeekCommandHandler implements R2CommandHandler {
                 }
             }
             
-            // 'sf' - seek forward
+            // 'sf' - seek to start of function at current offset (no arguments), or forward by bytes if arg supplied
             case "f": {
+                // If no argument, seek to function start
+                if (command.getArgumentCount() == 0) {
+                    Address current = context.getCurrentAddress();
+                    if (current == null) {
+                        throw new R2CommandException("Current address is not set");
+                    }
+                    Function func = context.getAPI().getFunctionContaining(current);
+                    if (func == null) {
+                        throw new R2CommandException("No function found at current address");
+                    }
+                    Address entry = func.getEntryPoint();
+                    context.setCurrentAddress(entry);
+                    return formatResult(entry, context, command);
+                }
+                // Fallback: seek forward by delta bytes
                 try {
                     String offsetStr = command.getFirstArgument("1");
-                    // Use RNum API to evaluate offset expressions
                     long offset = R2NumUtil.evaluateExpression(context, offsetStr);
                     if (offset <= 0) {
-                        offset = 1; // Default to 1 for non-positive values
+                        offset = 1;
                     }
                     Address newAddr = context.getCurrentAddress().add(offset);
                     context.setCurrentAddress(newAddr);
@@ -231,6 +246,7 @@ public class R2SeekCommandHandler implements R2CommandHandler {
         sb.append(" s [addr]       seek to address\n");
         sb.append(" s..32a8        seek to same address but replacing the lower nibbles\n");
         sb.append(" sb [delta]     seek backward delta bytes\n");
+        sb.append(" sf            seek to start of current function\n");
         sb.append(" sf [delta]     seek forward delta bytes\n");
         sb.append(" s- / s+        seek to previous/next location\n");
         sb.append(" sj             show current address as JSON\n");

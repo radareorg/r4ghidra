@@ -10,7 +10,14 @@ import r4ghidra.repl.R4GhidraREPLHandler;
 
 
 public class R4GhidraServer {
-	static HttpServer server;
+    static HttpServer server;
+    /**
+     * Check if the web server is currently running.
+     * @return true if running, false otherwise
+     */
+    public static boolean isRunning() {
+        return server != null;
+    }
 
 	static class MyRootHandler implements HttpHandler {
 		public void handle(HttpExchange t) throws IOException {

@@ -146,10 +146,18 @@ public class R4GhidraPlugin extends ProgramPlugin {
            private final R4GhidraPlugin plugin;
 
 		private JPanel panel;
-       private DockingAction startAction;
-       private DockingAction stopAction;
+        private DockingAction startAction;
+        private DockingAction stopAction;
        private DockingAction commandShellAction;
-       private DockingAction settingsAction;
+        private DockingAction settingsAction;
+        /**
+         * Update enabled state of start/stop actions based on server status.
+         */
+        private void updateStartStopActions() {
+            boolean running = R4GhidraServer.isRunning();
+            startAction.setEnabled(!running);
+            stopAction.setEnabled(running);
+        }
 
            public MyProvider(Plugin plugin, String owner) {
                super(plugin.getTool(), owner, owner);
@@ -181,14 +189,16 @@ public class R4GhidraPlugin extends ProgramPlugin {
 
 		// Customize actions
 		private void createActions() {
-			startAction = new DockingAction("R4Ghidra Start Action", getName()) {
+        startAction = new DockingAction("R4Ghidra Start Action", getName()) {
 				@Override
 				public void actionPerformed(ActionContext context) {
 					try {
 						String strPort=OptionDialog.showInputSingleLineDialog(null, "R4Ghidra", "Server port:", "9191");
 						Integer intPort=Integer.parseInt(strPort);
-						R4GhidraServer.start(intPort.intValue());
-						OkDialog.showInfo("R4Ghidra", "R4Ghidra server started on port "+strPort+".\n\nGet the best of both worlds!");
+                        R4GhidraServer.start(intPort.intValue());
+                        OkDialog.showInfo("R4Ghidra", "R4Ghidra server started on port "+strPort+".\n\nGet the best of both worlds!");
+                        // Update menu entries
+                        MyProvider.this.updateStartStopActions();
 					}catch(IOException ioe) {
 						OkDialog.showError("R4Ghidra Error", ioe.getMessage());
 					}
@@ -208,11 +218,13 @@ public class R4GhidraPlugin extends ProgramPlugin {
 		            "1"                                 // Menu Subgroup
 		        ));
 			
-			stopAction = new DockingAction("R4Ghidra Stop Action", getName()) {
+        stopAction = new DockingAction("R4Ghidra Stop Action", getName()) {
 				@Override
 				public void actionPerformed(ActionContext context) {
-					R4GhidraServer.stop();
-					OkDialog.showInfo("R4Ghidra", "R4Ghidra server stopped.");
+                        R4GhidraServer.stop();
+                        OkDialog.showInfo("R4Ghidra", "R4Ghidra server stopped.");
+                        // Update menu entries
+                        MyProvider.this.updateStartStopActions();
 					
 				}
 			};
@@ -249,14 +261,14 @@ public class R4GhidraPlugin extends ProgramPlugin {
 		        ));
 			
 			//action.setToolBarData(new ToolBarData(Icons.ADD_ICON, null));
-			startAction.setEnabled(true);
-			startAction.markHelpUnnecessary();
-			stopAction.setEnabled(true);
-			stopAction.markHelpUnnecessary();
-			commandShellAction.setEnabled(true);
-			commandShellAction.markHelpUnnecessary();
+            // Configure action enablement based on server state
+            startAction.markHelpUnnecessary();
+            stopAction.markHelpUnnecessary();
+            commandShellAction.markHelpUnnecessary();
             dockingTool.addAction(startAction);
             dockingTool.addAction(stopAction);
+            // Update start/stop enablement
+            updateStartStopActions();
             dockingTool.addAction(commandShellAction);
             // Action to open settings dialog
             settingsAction = new DockingAction("R4Ghidra Settings", getName()) {
