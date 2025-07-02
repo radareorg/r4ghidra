@@ -51,6 +51,7 @@ public class R2EvalConfig {
         set("asm.bits", "32", false);
         set("asm.cpu", "default", false);
         set("asm.bytes", "16", false);
+        set("asm.ucase", "false", false);
         
         // Configuration settings
         set("cfg.bigendian", "false", false);
@@ -61,7 +62,7 @@ public class R2EvalConfig {
         // Screen settings
         set("scr.color", "1", false);
         set("scr.prompt", "true", false);
-        set("scr.font", "STMono", false);
+        set("scr.font", "ST Mono", false);
         set("scr.fontsize", "12", false);
         set("scr.follow", "false", false);
         

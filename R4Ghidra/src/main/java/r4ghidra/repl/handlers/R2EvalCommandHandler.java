@@ -108,8 +108,8 @@ public class R2EvalCommandHandler implements R2CommandHandler {
             json.put("changed", changed);
             return json.toString() + "\n";
         } else {
-            // Standard output
-            return key + " = " + value + "\n";
+            // Don't print anything when setting a variable
+            return "";
         }
     }
     

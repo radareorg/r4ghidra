@@ -100,22 +100,22 @@ public class R4GhidraPlugin extends ProgramPlugin {
 	 * Initialize all command handlers for R4Ghidra
 	 */
 	private void initCommandHandlers() {
-        // Register all command handlers
-        commandHandlers.add(new R2SeekCommandHandler());
-        commandHandlers.add(new R2PrintCommandHandler());
-        commandHandlers.add(new R2BlocksizeCommandHandler());
-        commandHandlers.add(new R2DecompileCommandHandler());
-        commandHandlers.add(new R2EnvCommandHandler());
-        commandHandlers.add(new R2EvalCommandHandler());
-        commandHandlers.add(new R2ShellCommandHandler());
-        // Analyze commands: af, afl, afi
-        commandHandlers.add(new R2AnalyzeCommandHandler());
+		// Register all command handlers
+		commandHandlers.add(new R2SeekCommandHandler());
+		commandHandlers.add(new R2PrintCommandHandler());
+		commandHandlers.add(new R2BlocksizeCommandHandler());
+		// commandHandlers.add(new R2DecompileCommandHandler());
+		commandHandlers.add(new R2EnvCommandHandler());
+		commandHandlers.add(new R2EvalCommandHandler());
+		commandHandlers.add(new R2ShellCommandHandler());
+		// Analyze commands: af, afl, afi
+		commandHandlers.add(new R2AnalyzeCommandHandler());
 		commandHandlers.add(new R2InfoCommandHandler());
 		commandHandlers.add(new R2CommentCommandHandler());
-		
+
 		// Note: R2HelpCommandHandler will be created in the CommandShellProvider
 		// because it needs a reference to the command registry
-		
+
 		// Add more handlers as needed
 	}
 	
@@ -183,8 +183,13 @@ public class R4GhidraPlugin extends ProgramPlugin {
                        if (plugin.shellProvider == null) {
                            plugin.shellProvider = new R4CommandShellProvider(plugin, "R4Ghidra Command Shell");
                        }
-                       // Bring up the command shell dialog
-                       plugin.shellProvider.toFront();
+                       // Show the command shell as a dockable component in the tool
+                       if (!plugin.shellProviderAdded) {
+                           // Add the shell provider to the tool (not shown initially)
+                           plugin.getTool().addComponentProvider(plugin.shellProvider, false);
+                           plugin.shellProviderAdded = true;
+                       }
+                       plugin.getTool().showComponentProvider(plugin.shellProvider, true);
                    }
                    catch (Exception e) {
                        System.err.println("Error showing R4Ghidra command shell: " + e.getMessage());

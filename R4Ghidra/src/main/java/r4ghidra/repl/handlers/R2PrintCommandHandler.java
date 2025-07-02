@@ -214,6 +214,12 @@ public class R2PrintCommandHandler implements R2CommandHandler {
                 // Get instruction text
                 String disasm = instr.toString();
                 
+                // Apply case formatting based on asm.ucase setting
+                boolean useUppercase = context.getEvalConfig().getBoolean("asm.ucase");
+                if (!useUppercase) {
+                    disasm = disasm.toLowerCase();
+                }
+                
             // Create disassembled instruction
             DisassembledInstruction disasmInstr = new DisassembledInstruction();
             disasmInstr.address = currentAddr.getOffset();
@@ -474,6 +480,12 @@ public class R2PrintCommandHandler implements R2CommandHandler {
                 
                 // Get instruction text
                 String disasm = instr.toString();
+                
+                // Apply case formatting based on asm.ucase setting
+                boolean useUppercase = context.getEvalConfig().getBoolean("asm.ucase");
+                if (!useUppercase) {
+                    disasm = disasm.toLowerCase();
+                }
                 
                 // Create disassembled instruction
                 DisassembledInstruction disasmInstr = new DisassembledInstruction();

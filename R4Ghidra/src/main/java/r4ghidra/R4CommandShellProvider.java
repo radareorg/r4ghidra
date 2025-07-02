@@ -57,48 +57,8 @@ public class R4CommandShellProvider extends ComponentProvider {
      * This method will create a dialog window if needed
      */
     public void toFront() {
-        try {
-            JComponent comp = getComponent();
-            if (comp != null) {
-                Window win = SwingUtilities.getWindowAncestor(comp);
-                if (win == null || !win.isVisible()) {
-                    // If no window ancestor or not visible, create a floating dialog
-                    if (!isDialogShown) {
-                        JDialog dialog = new JDialog();
-                            // null, // SwingUtilities.getWindowAncestor(getTool().getActiveWindow()),
-                            // "R4Ghidra Command Shell");
-                        dialog.setSize(600, 400);
-                        // dialog.setLocationRelativeTo(getTool().getActiveWindow());
-                        dialog.setContentPane(comp);
-                        dialog.setDefaultCloseOperation(
-                            JDialog.DISPOSE_ON_CLOSE
-                        );
-                        dialog.addWindowListener(
-                            new WindowAdapter() {
-                                @Override
-                                public void windowClosed(WindowEvent e) {
-                                    isDialogShown = false;
-                                }
-                            }
-                        );
-                        dialog.setVisible(true);
-                        isDialogShown = true;
-                    }
-                } else {
-                    win.toFront();
-                }
-            }
-        } catch (Exception e) {
-            System.err.println(
-                "Error bringing R4Ghidra console to front: " + e.getMessage()
-            );
-            e.printStackTrace();
-            // Show error in GUI dialog
-            docking.widgets.OkDialog.showError(
-                "R4Ghidra Error",
-                "Error opening command shell: " + e.getMessage()
-            );
-        }
+        // Show this provider as a dockable component in the Ghidra tool
+        getTool().showComponentProvider(this, true);
     }
 
     private JPanel mainPanel;
@@ -120,7 +80,7 @@ public class R4CommandShellProvider extends ComponentProvider {
         // Add this provider to the Window menu
         setWindowMenuGroup("R4Ghidra");
         // Determine font: prefer STMono, fallback to monospaced
-        String desiredFont = "STMono";
+        String desiredFont = "ST Mono";
         boolean hasDesired = Arrays.asList(
             GraphicsEnvironment.getLocalGraphicsEnvironment()
                 .getAvailableFontFamilyNames()
