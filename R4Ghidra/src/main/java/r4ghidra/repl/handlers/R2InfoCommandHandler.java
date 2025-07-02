@@ -86,15 +86,17 @@ public class R2InfoCommandHandler implements R2CommandHandler {
             // Format output based on suffix
             if (command.hasSuffix('j')) {
                 return formatInfoJson(program, arch, bits, processor);
-            } else {
-                return formatInfoText(program, arch, bits, processor);
             }
+	if (command.hasSuffix('*')) {
+                return formatInfoR2(program, arch, bits, processor);
+            }
+                return formatInfoText(program, arch, bits, processor);
     }
 
     /**
      * Format program information as text
      */
-    private String formatInfoText(Program program, String arch, String bits, String processor) {
+    private String formatInfoR2(Program program, String arch, String bits, String processor) {
 	    StringBuilder sb = new StringBuilder();
 
 	    // Output the r2 commands that would set up the environment
@@ -130,6 +132,34 @@ public class R2InfoCommandHandler implements R2CommandHandler {
 	    try {
 		    // Add program size
 		    sb.append("# size ").append(program.getMaxAddress().subtract(program.getMinAddress()) + 1).append("\n");
+	    } catch (Exception e) {
+		    sb.append ("# " + e.toString());
+	    }
+
+	    return sb.toString();
+    }
+    /**
+     * Format program information as text
+     */
+    private String formatInfoText(Program program, String arch, String bits, String processor) {
+	    StringBuilder sb = new StringBuilder();
+
+	    // Output the r2 commands that would set up the environment
+	    sb.append("arch  ").append(arch).append("\n");
+	    sb.append("bits  ").append(bits).append("\n");
+	    sb.append("baddr 0x").append(program.getImageBase()).append("\n");
+	    // Add additional information as comments
+	    // sb.append("# cpu ").append(processor).append("\n");
+	    sb.append("md5   ").append(program.getExecutableMD5()).append("\n");
+	    sb.append("exe   ").append(program.getExecutablePath()).append("\n");
+
+	    // Add language information
+	    sb.append("lang ").append(program.getLanguage().getLanguageID().getIdAsString()).append("\n");
+	    sb.append("comp ").append(program.getCompiler()).append("\n");
+
+	    try {
+		    // Add program size
+		    sb.append("size ").append(program.getMaxAddress().subtract(program.getMinAddress()) + 1).append("\n");
 	    } catch (Exception e) {
 		    sb.append ("# " + e.toString());
 	    }
