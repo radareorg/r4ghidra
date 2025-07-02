@@ -86,7 +86,8 @@ public class R4CommandShellProvider extends ComponentProvider {
                 .getAvailableFontFamilyNames()
         ).contains(desiredFont);
         String fontName = hasDesired ? desiredFont : Font.MONOSPACED;
-        shellFont = new Font(fontName, Font.PLAIN, 12);
+        // shellFont = new Font(fontName, Font.PLAIN, 12);
+        shellFont = new Font(Font.MONOSPACED, Font.BOLD, 12);
 
         repl = new R2REPLImpl();
         

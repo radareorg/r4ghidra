@@ -46,6 +46,7 @@ import ghidra.util.HelpLocation;
 import r4ghidra.repl.R2CommandHandler;
 import r4ghidra.repl.handlers.*;
 import r4ghidra.repl.R2REPLImpl;
+import r4ghidra.repl.handlers.R2FlagCommandHandler;
 
 /**
  * Provide class-level documentation that describes what this plugin does.
@@ -115,6 +116,7 @@ public class R4GhidraPlugin extends ProgramPlugin {
 		commandHandlers.add(new R2AnalyzeCommandHandler());
 		commandHandlers.add(new R2InfoCommandHandler());
 		commandHandlers.add(new R2CommentCommandHandler());
+		commandHandlers.add(new R2FlagCommandHandler());
 
 		// Note: R2HelpCommandHandler will be created in the CommandShellProvider
 		// because it needs a reference to the command registry
@@ -138,7 +140,7 @@ public class R4GhidraPlugin extends ProgramPlugin {
 		
 		// Create the command shell when a program is opened
 		if (shellProvider == null) {
-			shellProvider = new R4CommandShellProvider(this, "R4Ghidra Command Shell");
+			shellProvider = new R4CommandShellProvider(this, "R4Ghidra Shell");
 		}
 	}
 	
@@ -184,7 +186,7 @@ public class R4GhidraPlugin extends ProgramPlugin {
                    try {
                        // Instantiate the shell provider if needed
                        if (plugin.shellProvider == null) {
-                           plugin.shellProvider = new R4CommandShellProvider(plugin, "R4Ghidra Command Shell");
+                           plugin.shellProvider = new R4CommandShellProvider(plugin, "R4Ghidra Shell");
                        }
                        // Show the command shell as a dockable component in the tool
                        if (!plugin.shellProviderAdded) {

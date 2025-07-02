@@ -225,7 +225,7 @@ public class R2EvalCommandHandler implements R2CommandHandler {
         sb.append(" e*               list all eval vars as r2 commands\n");
         sb.append(" ej               list all eval vars in JSON format\n");
         sb.append(" eq               list only variable names, one per line\n\n");
-        
+       /* 
         sb.append("Available variables:\n");
         sb.append(" asm.arch         set architecture (x86, arm, etc.)\n");
         sb.append(" asm.bits         set architecture bits (8, 16, 32, 64)\n");
@@ -240,7 +240,7 @@ public class R2EvalCommandHandler implements R2CommandHandler {
         sb.append(" dir.tmp          set temporary directory\n");
         sb.append(" http.port        set HTTP server port\n");
         sb.append(" io.cache         enable I/O caching (true/false)\n");
-        
+*/
         return sb.toString();
     }
 }

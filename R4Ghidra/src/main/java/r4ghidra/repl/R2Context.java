@@ -5,6 +5,7 @@ import java.awt.GraphicsEnvironment;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 import ghidra.program.flatapi.FlatProgramAPI;
 import ghidra.program.model.address.Address;
@@ -63,6 +64,12 @@ public class R2Context {
     // File system abstraction
     private R2FileSystem fileSystem;
     
+    // Flag storage (maps flag names to addresses)
+    private Map<String, Long> flags;
+    
+    // Current flagspace
+    private String currentFlagspace;
+    
     // Reference to the command shell provider for UI updates
     private R4CommandShellProvider shellProvider;
 
@@ -78,6 +85,10 @@ public class R2Context {
         this.lastErrorCode = 0;
         this.lastErrorMessage = "";
         this.variables = new HashMap<>();
+        
+        // Initialize flag storage
+        this.flags = new TreeMap<>();
+        this.currentFlagspace = "*";
         
         // Initialize the eval config
         this.evalConfig = new R2EvalConfig(this);
@@ -382,14 +393,130 @@ public class R2Context {
         ).contains(fontName);
         
         // Use monospaced as fallback if font doesn't exist
-        if (!hasFont) {
+        if (!hasFont || fontName.equals("")) {
             fontName = Font.MONOSPACED;
         }
         
         // Create the new font
-        Font newFont = new Font(fontName, Font.PLAIN, fontSize);
+        Font newFont = new Font(fontName, Font.BOLD, fontSize);
         
         // Apply the font to the UI
         shellProvider.updateFont(newFont);
+    }
+    
+    /**
+     * Set a flag at the specified address
+     * 
+     * @param name The name of the flag
+     * @param address The address to set the flag at
+     * @return true if the flag was set successfully, false otherwise
+     */
+    public boolean setFlag(String name, long address) {
+        if (name == null || name.isEmpty()) {
+            return false;
+        }
+        
+        // Store the flag
+        flags.put(formatFlagName(name), address);
+        return true;
+    }
+    
+    /**
+     * Set a flag at the current address
+     * 
+     * @param name The name of the flag
+     * @return true if the flag was set successfully, false otherwise
+     */
+    public boolean setFlag(String name) {
+        if (currentAddress == null) {
+            return false;
+        }
+        return setFlag(name, currentAddress.getOffset());
+    }
+    
+    /**
+     * Get the address of a flag by name
+     * 
+     * @param name The name of the flag
+     * @return The address of the flag, or null if the flag does not exist
+     */
+    public Long getFlagAddress(String name) {
+        return flags.get(formatFlagName(name));
+    }
+    
+    /**
+     * Delete a flag by name
+     * 
+     * @param name The name of the flag to delete
+     * @return true if the flag was deleted, false if it didn't exist
+     */
+    public boolean deleteFlag(String name) {
+        String formattedName = formatFlagName(name);
+        if (flags.containsKey(formattedName)) {
+            flags.remove(formattedName);
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * Get all flags
+     * 
+     * @return A map of flag names to addresses
+     */
+    public Map<String, Long> getFlags() {
+        return new HashMap<>(flags);
+    }
+    
+    /**
+     * Format a flag name to ensure it's valid
+     * 
+     * @param name The raw flag name
+     * @return A formatted flag name safe for use
+     */
+    private String formatFlagName(String name) {
+        // If the flag contains a dot (indicating a flagspace)
+        if (name.contains(".")) {
+            return name; // Return as is - already includes flagspace
+        } else if (!currentFlagspace.equals("*")) {
+            // Prepend current flagspace
+            return currentFlagspace + "." + name;
+        }
+        return name;
+    }
+    
+    /**
+     * Set the current flagspace
+     * 
+     * @param flagspace The new flagspace to use
+     */
+    public void setFlagspace(String flagspace) {
+        this.currentFlagspace = flagspace;
+    }
+    
+    /**
+     * Get the current flagspace
+     * 
+     * @return The current flagspace
+     */
+    public String getCurrentFlagspace() {
+        return currentFlagspace;
+    }
+    
+    /**
+     * Get all flagspaces currently in use
+     * 
+     * @return A list of all flagspaces that have flags
+     */
+    public String[] getFlagspaces() {
+        // Extract unique flagspaces from flag names
+        java.util.Set<String> spaces = new java.util.HashSet<>();
+        for (String flagName : flags.keySet()) {
+            int dotIndex = flagName.indexOf('.');
+            if (dotIndex > 0) {
+                spaces.add(flagName.substring(0, dotIndex));
+            }
+        }
+        return spaces.toArray(new String[0]);
     }
 }
