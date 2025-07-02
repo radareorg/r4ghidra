@@ -6,14 +6,21 @@ import java.util.List;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import ghidra.app.decompiler.ClangLine;
+import ghidra.app.decompiler.DecompInterface;
+import ghidra.app.decompiler.DecompileResults;
+import ghidra.app.decompiler.PrettyPrinter;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.CodeUnit;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.Listing;
+import ghidra.program.model.symbol.IdentityNameTransformer;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
 import ghidra.program.model.symbol.SymbolType;
+
+import java.util.Base64;
 import r4ghidra.repl.R2Command;
 import r4ghidra.repl.R2CommandException;
 import r4ghidra.repl.R2CommandHandler;
@@ -428,7 +435,27 @@ public class R2PrintCommandHandler implements R2CommandHandler {
      * Execute the pdg command to disassemble using function size
      */
     private String executePdgCommand(R2Command command, R2Context context) throws R2CommandException {
-return "TODO: not implemented";
+        // Get the current address
+        Address address = context.getCurrentAddress();
+        if (address == null) {
+            throw new R2CommandException("Current address is not set");
+        }
+        
+        try {
+            // Get the function at the current address
+            Function function = context.getAPI().getFunctionContaining(address);
+            if (function == null) {
+                throw new R2CommandException("No function at the current address");
+            }
+            
+            // Check if command has a radare2 command suffix
+            char rad = command.hasSuffix('*') ? '*' : ' ';
+            
+            // Decompile the function
+            return decompileFunction(function, rad);
+        } catch (Exception e) {
+            throw new R2CommandException("Error decompiling function: " + e.getMessage());
+        }
     }
 
     /**
@@ -561,6 +588,68 @@ return "TODO: not implemented";
         String comment;
     }
 
+    /**
+     * Decompile a function and format the output
+     */
+    private String decompileFunction(Function function, char rad) throws Exception {
+        StringBuffer sb = new StringBuffer();
+
+        // Create decompiler interface
+        DecompInterface di = new DecompInterface();
+        di.openProgram(function.getProgram());
+        
+        // Decompile with a 5-seconds timeout
+        DecompileResults dr = di.decompileFunction(function, 5, null);
+        
+        if (!dr.decompileCompleted()) {
+            throw new Exception("Decompilation failed: " + dr.getErrorMessage());
+        }
+
+        // Format the decompiled code
+        PrettyPrinter pp = new PrettyPrinter(function, dr.getCCodeMarkup(), new IdentityNameTransformer());
+        ArrayList<ClangLine> lines = new ArrayList<>(pp.getLines());
+
+        // Process each line
+        for (ClangLine line : lines) {
+            long minAddress = Long.MAX_VALUE;
+            long maxAddress = 0;
+            
+            // Find min and max addresses in this line
+            for (int i = 0; i < line.getNumTokens(); i++) {
+                if (line.getToken(i).getMinAddress() == null) {
+                    continue;
+                }
+                long addr = line.getToken(i).getMinAddress().getOffset();
+                minAddress = addr < minAddress ? addr : minAddress;
+                maxAddress = addr > maxAddress ? addr : maxAddress;
+            }
+            
+            // Process the code line
+            String codeline = line.toString();
+            int colon = codeline.indexOf(':');
+            if (colon != -1) {
+                codeline = codeline.substring(colon + 1);
+                codeline = line.getIndentString() + codeline;
+            }
+            
+            // Format output based on command type
+            if (rad == '*') {
+                String b64comment = Base64.getEncoder().encodeToString(codeline.getBytes());
+                sb.append(String.format("CCu base64:%s @ 0x%x\n", b64comment, minAddress));
+            } else {
+                if (maxAddress == 0) {
+                    String msg = String.format("           %s\n", codeline);
+                    sb.append(msg);
+                } else {
+                    String msg = String.format("0x%08x %s\n", minAddress, codeline);
+                    sb.append(msg);
+                }
+            }
+        }
+        
+        return sb.toString();
+    }
+
     @Override
     public String getHelp() {
         StringBuilder help = new StringBuilder();
@@ -577,6 +666,8 @@ return "TODO: not implemented";
         help.append(" pdj [n]      print disassembly as json\n");
         help.append(" pdf          print disassembly of current function\n");
         help.append(" pdfj         print disassembly of current function as json\n");
+        help.append(" pdg          print decompiled C-like code of current function\n");
+        help.append(" pdg*         print decompiled code for importing comments in radare2\n");
         help.append("\nExamples:\n");
         help.append(" p8 16        print 16 bytes in hex\n");
         help.append(" p8 0x10      print 16 bytes in hex (using hex number)\n");
