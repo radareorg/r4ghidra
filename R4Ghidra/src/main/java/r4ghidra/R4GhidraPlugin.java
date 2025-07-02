@@ -88,13 +88,16 @@ public class R4GhidraPlugin extends ProgramPlugin {
 		commandHandlers = new ArrayList<>();
 	}
 
-	@Override
-	public void init() {
-		super.init();
-		
-		// Initialize command handlers
-		initCommandHandlers();
-	}
+    @Override
+    public void init() {
+        super.init();
+        // Initialize command handlers
+        initCommandHandlers();
+        // Create and register UI actions now that the tool is initialized
+        if (provider != null) {
+            provider.createActions();
+        }
+    }
 	
 	/**
 	 * Initialize all command handlers for R4Ghidra
@@ -170,7 +173,7 @@ public class R4GhidraPlugin extends ProgramPlugin {
                super(plugin.getTool(), owner, owner);
                // Store reference to the owning plugin
                this.plugin = (R4GhidraPlugin) plugin;
-               createActions();
+               // Actions will be created in plugin.init(), ensuring the tool menu is ready
            }
 		
 		/**
@@ -199,8 +202,8 @@ public class R4GhidraPlugin extends ProgramPlugin {
                }
            }
 
-		// Customize actions
-		private void createActions() {
+       // Customize actions
+       public void createActions() {
         startAction = new DockingAction("R4Ghidra Start Action", getName()) {
 				@Override
 				public void actionPerformed(ActionContext context) {
