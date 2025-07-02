@@ -63,6 +63,12 @@ public class R2REPLImpl {
             return "";
         }
         
+        // Special case: if command starts with #, it's a comment-only command
+        // and should be treated as empty
+        if (cmdStr.trim().startsWith("#")) {
+            return "";
+        }
+        
         // Add command to history
         addToHistory(cmdStr);
         
@@ -82,16 +88,44 @@ public class R2REPLImpl {
             // Check for output redirection (>)
             int redirectIndex = findUnquotedChar(cmdStr, '>');
             if (redirectIndex > 0) {
+                // Check for comments in the redirection command
+                int commentIndex = findUnquotedChar(cmdStr, '#');
+                if (commentIndex > 0 && commentIndex < redirectIndex) {
+                    // Comment is before redirection, truncate the command
+                    cmdStr = cmdStr.substring(0, commentIndex).trim();
+                    // Re-check if we still have redirection after comment removal
+                    redirectIndex = findUnquotedChar(cmdStr, '>');
+                    if (redirectIndex <= 0) {
+                        return executeCommand(cmdStr);
+                    }
+                }
                 return executeRedirectCommand(cmdStr, redirectIndex, false);
             }
             
             // Check for pipe operator (|)
             int pipeIndex = findUnquotedChar(cmdStr, '|');
             if (pipeIndex > 0) {
+                // Check for comments in the piped command
+                int commentIndex = findUnquotedChar(cmdStr, '#');
+                if (commentIndex > 0 && commentIndex < pipeIndex) {
+                    // Comment is before pipe, truncate the command
+                    cmdStr = cmdStr.substring(0, commentIndex).trim();
+                    // Re-check if we still have a pipe after comment removal
+                    pipeIndex = findUnquotedChar(cmdStr, '|');
+                    if (pipeIndex <= 0) {
+                        return executeCommand(cmdStr);
+                    }
+                }
                 return executePipeCommand(cmdStr, pipeIndex);
             }
             
             // Check for output filter (~)
+            // First check for comments and remove them before processing filters
+            int commentIndex = findUnquotedChar(cmdStr, '#');
+            if (commentIndex > 0) {
+                cmdStr = cmdStr.substring(0, commentIndex).trim();
+            }
+            
             String[] cmdAndFilter = R2OutputFilter.extractCommandAndFilter(cmdStr);
             if (cmdAndFilter != null) {
                 String cmd = cmdAndFilter[0];
@@ -437,9 +471,39 @@ public class R2REPLImpl {
     }
     
     /**
+     * Process any comments in the command string (# character)
+     * If the command starts with a single quote, preserve the # character
+     * Otherwise, trim everything after the # character
+     * 
+     * @param cmdStr The command string to process
+     * @return The command string with comments processed
+     */
+    private String processComments(String cmdStr) {
+        if (cmdStr == null || cmdStr.isEmpty()) {
+            return cmdStr;
+        }
+        
+        // If the command starts with a single quote, don't process comments
+        if (cmdStr.startsWith("'")) {
+            return cmdStr;
+        }
+        
+        // Find the first unquoted # character
+        int commentIndex = findUnquotedChar(cmdStr, '#');
+        if (commentIndex >= 0) {
+            return cmdStr.substring(0, commentIndex).trim();
+        }
+        
+        return cmdStr;
+    }
+
+    /**
      * Parse a command string into an R2Command object
      */
     private R2Command parseCommand(String cmdStr) throws R2CommandException {
+        // Process comments first
+        cmdStr = processComments(cmdStr);
+        
         // Extract any backtick command substitution
         cmdStr = processCommandSubstitution(cmdStr);
         
@@ -536,6 +600,7 @@ public class R2REPLImpl {
         for (String cmd : commands) {
             String trimmedCmd = cmd.trim();
             if (!trimmedCmd.isEmpty()) {
+                // Each command should be processed separately
                 String cmdResult = executeCommand(trimmedCmd);
                 result.append(cmdResult);
                 
@@ -1004,6 +1069,70 @@ public class R2REPLImpl {
      */
     public List<String> getCommandHistory() {
         return commandHistory;
+    }
+    
+    /**
+     * Test the comment handling implementation
+     * This method is used for internal testing and returns a string with test results
+     * 
+     * @return A string containing the test results
+     */
+    public String testCommentHandling() {
+        StringBuilder results = new StringBuilder();
+        results.append("R2 Comment Handling Tests\n");
+        results.append("=======================\n");
+        
+        // Test 1: Basic comment handling
+        String test1 = "?e hello # world";
+        String processed1 = processComments(test1);
+        results.append("Test 1: Basic comment handling\n");
+        results.append("  Input: ").append(test1).append("\n");
+        results.append("  Output: ").append(processed1).append("\n");
+        results.append("  Expected: ?e hello\n");
+        results.append("  Result: ").append(processed1.equals("?e hello") ? "PASS" : "FAIL").append("\n\n");
+        
+        // Test 2: Quoted comment handling
+        String test2 = "'?e hello # world";
+        String processed2 = processComments(test2);
+        results.append("Test 2: Quoted comment handling\n");
+        results.append("  Input: ").append(test2).append("\n");
+        results.append("  Output: ").append(processed2).append("\n");
+        results.append("  Expected: '?e hello # world\n");
+        results.append("  Result: ").append(processed2.equals("'?e hello # world") ? "PASS" : "FAIL").append("\n\n");
+        
+        // Test 3: Comment-only command
+        String test3 = "# this is just a comment";
+        String processed3 = processComments(test3);
+        results.append("Test 3: Comment-only command\n");
+        results.append("  Input: ").append(test3).append("\n");
+        results.append("  Output: ").append(processed3).append("\n");
+        results.append("  Expected: \n");
+        results.append("  Result: ").append(processed3.isEmpty() ? "PASS" : "FAIL").append("\n\n");
+        
+        // Test 4: Command with quoted string containing #
+        String test4 = "?e \"hello # not a comment\"";
+        String processed4 = processComments(test4);
+        results.append("Test 4: Command with quoted string containing #\n");
+        results.append("  Input: ").append(test4).append("\n");
+        results.append("  Output: ").append(processed4).append("\n");
+        results.append("  Expected: ?e \"hello # not a comment\"\n");
+        results.append("  Result: ").append(processed4.equals("?e \"hello # not a comment\"") ? "PASS" : "FAIL").append("\n\n");
+        
+        // Test 5: Multiple commands with comments
+        String test5 = "?e hello; ?e world # comment";
+        String[] commands = splitBySemicolon(test5);
+        results.append("Test 5: Multiple commands with comments\n");
+        results.append("  Input: ").append(test5).append("\n");
+        results.append("  Split result: [" + commands[0] + ", " + commands[1] + "]\n");
+        String processed5a = processComments(commands[0]);
+        String processed5b = processComments(commands[1]);
+        results.append("  Processed first command: ").append(processed5a).append("\n");
+        results.append("  Processed second command: ").append(processed5b).append("\n");
+        results.append("  Expected first: ?e hello\n");
+        results.append("  Expected second: ?e world\n");
+        results.append("  Result: ").append(processed5a.equals("?e hello") && processed5b.equals(" ?e world") ? "PASS" : "FAIL").append("\n\n");
+        
+        return results.toString();
     }
     
     /**

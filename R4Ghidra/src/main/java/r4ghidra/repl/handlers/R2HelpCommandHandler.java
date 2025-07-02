@@ -72,6 +72,26 @@ public class R2HelpCommandHandler implements R2CommandHandler {
         
         // Handle help subcommands
         switch (subcommand) {
+            // '?test' - run test commands
+            case "test":
+                if (command.getArgumentCount() > 0 && command.getFirstArgument("").equals("comments")) {
+                    // Get the R2REPLImpl instance from the parent class
+                    // We can access this using reflection
+                    try {
+                        java.lang.reflect.Field replField = getClass().getDeclaredField("repl");
+                        replField.setAccessible(true);
+                        Object repl = replField.get(this);
+                        if (repl instanceof r4ghidra.repl.R2REPLImpl) {
+                            java.lang.reflect.Method testMethod = repl.getClass().getMethod("testCommentHandling");
+                            return (String)testMethod.invoke(repl);
+                        }
+                    } catch (Exception e) {
+                        return "Error running comment tests: " + e.getMessage();
+                    }
+                    return "Failed to run comment tests";
+                }
+                return "Unknown test command. Available tests: comments";
+                
             // '?V' - version information
             case "V":
                 return formatHelpOutput(getVersionInfo(), command);
@@ -520,6 +540,7 @@ public class R2HelpCommandHandler implements R2CommandHandler {
         sb.append(" ?*~pattern    recursively show help for all commands, then filter lines matching pattern\n");
         sb.append(" ?j            show help in JSON format\n");
         sb.append(" ?q            list only command names\n");
+        sb.append(" ?test comments  run tests for comment handling (internal use)\n");
         return sb.toString();
     }
 }

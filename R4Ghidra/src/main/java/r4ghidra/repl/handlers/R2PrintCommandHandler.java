@@ -50,6 +50,8 @@ public class R2PrintCommandHandler implements R2CommandHandler {
                 return executePxfCommand(command, context);
             case "df":
                 return executePdfCommand(command, context);
+            case "dg":
+                return executePdgCommand(command, context);
             default:
                 throw new R2CommandException("Unknown print subcommand: p" + subcommand);
         }
@@ -422,6 +424,13 @@ public class R2PrintCommandHandler implements R2CommandHandler {
         return sb.toString();
     }
     
+    /**
+     * Execute the pdg command to disassemble using function size
+     */
+    private String executePdgCommand(R2Command command, R2Context context) throws R2CommandException {
+return "TODO: not implemented";
+    }
+
     /**
      * Execute the pdf command to disassemble using function size
      */
