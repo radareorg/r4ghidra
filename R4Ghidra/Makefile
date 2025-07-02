@@ -29,7 +29,7 @@ clean:
 	rm -rf .gradle dist build
 
 indent:
-	gradle spotlessApply
+	GHIDRA_INSTALL_DIR="$(GHIDRA_INSTALL_DIR)" gradle spotlessApply
 
 mrproper: clean
 	rm -rf "$(HOME)/.gradle"
