@@ -13,7 +13,6 @@ import r4ghidra.repl.handlers.R2BlocksizeCommandHandler;
 import r4ghidra.repl.handlers.R2EnvCommandHandler;
 import r4ghidra.repl.handlers.R2EvalCommandHandler;
 import r4ghidra.repl.handlers.R2HelpCommandHandler;
-import r4ghidra.repl.handlers.R2HistoryCommandHandler;
 import r4ghidra.repl.handlers.R2PrintCommandHandler;
 import r4ghidra.repl.handlers.R2SeekCommandHandler;
 import r4ghidra.repl.handlers.R2ShellCommandHandler;
@@ -56,10 +55,10 @@ public class R4GhidraREPLHandler implements HttpHandler {
         commandRegistry.put("p", printHandler);
         repl.registerCommand("p", printHandler);
         
-        // History and shell commands
-        R2HistoryCommandHandler historyHandler = new R2HistoryCommandHandler();
-        commandRegistry.put("!", historyHandler);
-        repl.registerCommand("!", historyHandler);
+        // Shell commands
+        R2ShellCommandHandler shellHandler = new R2ShellCommandHandler();
+        commandRegistry.put("!", shellHandler);
+        repl.registerCommand("!", shellHandler);
         
         // Environment variable commands
         R2EnvCommandHandler envHandler = new R2EnvCommandHandler();

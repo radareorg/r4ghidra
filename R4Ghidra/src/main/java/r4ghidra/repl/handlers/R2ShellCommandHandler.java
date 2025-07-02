@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import r4ghidra.repl.R2Command;
-import r4ghidra.repl.handlers.R2HistoryCommandHandler;
 
 import org.json.JSONObject;
 
@@ -39,7 +38,7 @@ public class R2ShellCommandHandler implements R2CommandHandler {
             return executeShellWithCapture(cmdLine.substring(2).trim());
         } else {
             // ! - Execute and return exit code
-            return executeShell(cmdLine.substring(1).trim());
+            return executeShell(cmdLine.substring(1).trim(), context);
         }
     }
     
@@ -111,17 +110,19 @@ public class R2ShellCommandHandler implements R2CommandHandler {
      * @param shellCmd The shell command to execute
      * @return A simple status message with the exit code
      */
-    private String executeShell(String shellCmd) throws R2CommandException {
+    private String executeShell(String shellCmd, R2Context context) throws R2CommandException {
         if (shellCmd.isEmpty()) {
-            // Get the history handler from the context
-            R2HistoryCommandHandler historyHandler = null;
-            if (context instanceof r4ghidra.repl.R2REPLImpl) {
-                historyHandler = ((r4ghidra.repl.R2REPLImpl)context).getHistoryHandler();
-            }
-            
-            if (historyHandler != null) {
-                // Display command history when ! is used without arguments
-                return historyHandler.displayCommandHistory(new R2Command("!", "", new ArrayList<>(), null));
+            // Access command history through the REPL instance
+            try {
+                java.lang.reflect.Field field = r4ghidra.repl.R2REPLImpl.class.getDeclaredField("instance");
+                field.setAccessible(true);
+                r4ghidra.repl.R2REPLImpl repl = (r4ghidra.repl.R2REPLImpl) field.get(null);
+                if (repl != null) {
+                    // Get command history directly from the REPL
+                    return repl.displayCommandHistory(false);
+                }
+            } catch (Exception e) {
+                // If we can't access the REPL, just return a message
             }
             return "No command history available.\n";
         }

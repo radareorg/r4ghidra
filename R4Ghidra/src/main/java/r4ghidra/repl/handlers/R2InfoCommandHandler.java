@@ -102,8 +102,7 @@ public class R2InfoCommandHandler implements R2CommandHandler {
 	    sb.append("e asm.bits=").append(bits).append("\n");
 	    sb.append("f base.addr=0x").append(program.getImageBase()).append("\n");
 	    try {
-		    Address entryPoint = program.getImageBase().add(program.getExecutableFormat() != null ?
-				    program.getProgramHeader().getEntryPointOffset() : 0);
+		    Address entryPoint = program.getImageBase().add(0); // Just use 0 for now as entry point
 
 		    sb.append("f entry0=" + entryPoint);
 	    } catch (Exception e) {

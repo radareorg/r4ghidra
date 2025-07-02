@@ -9,7 +9,6 @@ import java.util.regex.Pattern;
 
 import ghidra.program.model.address.Address;
 import r4ghidra.repl.filesystem.R2FileSystemException;
-import r4ghidra.repl.handlers.R2HistoryCommandHandler;
 
 /**
  * Radare2 REPL Implementation
@@ -19,14 +18,17 @@ import r4ghidra.repl.handlers.R2HistoryCommandHandler;
  */
 public class R2REPLImpl {
     
+    // Singleton instance for static access
+    private static R2REPLImpl instance;
+    
     // Root command registry - maps command prefixes to handlers
     private Map<String, R2CommandHandler> commandRegistry;
     
     // Context that can be accessed by command handlers
     private R2Context context;
     
-    // History command handler to track command history
-    private R2HistoryCommandHandler historyHandler;
+    // Command history storage
+    private List<String> commandHistory = new ArrayList<>();
     
     /**
      * Create a new R2 REPL implementation
@@ -34,7 +36,9 @@ public class R2REPLImpl {
     public R2REPLImpl() {
         commandRegistry = new HashMap<>();
         context = new R2Context();
-        historyHandler = new R2HistoryCommandHandler();
+        
+        // Set the singleton instance
+        instance = this;
     }
     
     /**
@@ -44,12 +48,8 @@ public class R2REPLImpl {
      * @param handler The handler implementation
      */
     public void registerCommand(String prefix, R2CommandHandler handler) {
-        if (prefix.equals("!") && handler != historyHandler) {
-            // Store the original shell handler in the history handler to delegate shell commands
-            commandRegistry.put(prefix, historyHandler);
-        } else {
-            commandRegistry.put(prefix, handler);
-        }
+        // Simply register the command handler
+        commandRegistry.put(prefix, handler);
     }
     
     /**
@@ -64,9 +64,7 @@ public class R2REPLImpl {
         }
         
         // Add command to history
-        if (historyHandler != null) {
-            historyHandler.addToHistory(cmdStr);
-        }
+        addToHistory(cmdStr);
         
         try {
             // Check for semicolon-separated commands
@@ -986,11 +984,52 @@ public class R2REPLImpl {
     }
     
     /**
-     * Get the history command handler
+     * Add a command to the history
      * 
-     * @return The history command handler
+     * @param cmd The command to add
      */
-    public R2HistoryCommandHandler getHistoryHandler() {
-        return historyHandler;
+    public void addToHistory(String cmd) {
+        if (cmd != null && !cmd.trim().isEmpty()) {
+            // Don't add duplicate consecutive commands
+            if (commandHistory.isEmpty() || !cmd.equals(commandHistory.get(commandHistory.size() - 1))) {
+                commandHistory.add(cmd);
+            }
+        }
+    }
+    
+    /**
+     * Get the command history
+     * 
+     * @return The list of commands in history
+     */
+    public List<String> getCommandHistory() {
+        return commandHistory;
+    }
+    
+    /**
+     * Display the command history as a formatted string
+     * 
+     * @param json Whether to return the history as JSON
+     * @return Formatted history as a string
+     */
+    public String displayCommandHistory(boolean json) {
+        if (commandHistory.isEmpty()) {
+            return "No command history available.\n";
+        }
+        
+        // Check if JSON output is requested
+        if (json) {
+            org.json.JSONArray jsonArray = new org.json.JSONArray();
+            for (int i = 0; i < commandHistory.size(); i++) {
+                jsonArray.put(commandHistory.get(i));
+            }
+            return jsonArray.toString() + "\n";
+        }
+        
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < commandHistory.size(); i++) {
+            sb.append(i + 1).append("  ").append(commandHistory.get(i)).append("\n");
+        }
+        return sb.toString();
     }
 }
