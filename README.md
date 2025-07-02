@@ -1,79 +1,94 @@
-# r4ghidra
+# R4Ghidra Plugin
 
-[![Build Extension](https://github.com/radareorg/ghidra-r2web/actions/workflows/gradle.yml/badge.svg)](https://github.com/radareorg/ghidra-r2web/actions/workflows/gradle.yml)
+R4Ghidra provides a standalone radare2 experience inside Ghidra, implemented fully in Java but powered by Ghidra's APIs internally. This plugin allows users to communicate from/to radare2 instances via r2web and r2pipe protocols.
 
-This repository contains integration scripts to interop Ghidra and radare2.
+R4Ghidra supports not just the most common radare2 commands, but also all the handy command tricks you can do with r2 oneliners, including pipes, redirects, iterations, command substitution, file operations and more. The plugin features a complete REPL (Read-Eval-Print Loop) implementation that faithfully reproduces the radare2 command line experience within Ghidra.
 
-It's just an Ghidra plugin that starts an http server to let r2 talk to it.
+Please use the [Issue tracker](https://github.com/radareorg/ghidra-r2web/issues) for feedback and bug reports!
 
-## Features
+![r4ghidra](r4ghidra.png)
 
-* Decompile current function
-* Load the decompiler output as comments
-* List functions found by Ghidra ('afl')
-* List symbols 'is' from Ghidra bin parser
-* Import comments from Ghidra into r2
-* Read/Write ghidra's session remote memory contents
+
+## Build
+
+To build the plugin, simply run:
+
+```bash
+make
+```
+
+The extension .zip will be created in `dist/` directory. You can also download pre-built releases from the [release page](https://github.com/radareorg/ghidra-r2web/releases).
+
+### Build Requirements
+
+- Java21
+- GHIDRA
+- Gradle
+
+### Ubuntu
+
+```bash
+sudo apt install openjdk-21-jdk:amd64
+sudo snap install ghidra --edge
+sudo snap install gradle --edge --classic
+make
+```
+
+## Installation
+
+### Install
+
+1. In **Ghidra Project Manager** choose `File->Install Extensions`
+2. In the top right corner of the new window click the green plus sign
+3. Choose the R4Ghidra distribution ZIP file from the `dist/` directory or downloaded from the release page
+4. Restart Ghidra as instructed
+5. After restart open the **Code Browser**, which should offer you to configure the new extension
+6. Accept and tick the checkbox next to the plugin name
+
+If the configuration option is not offered after restart, you can manually enable the plugin:
+1. Use the `File->Configure` menu item
+2. Click the Configure link under Ghidra Core
+3. Find and enable the R4Ghidra plugin in the list
+
+### Uninstall
+
+1. In **Ghidra Project Manager** choose `File->Install Extensions`
+2. Select R4Ghidra from the list of installed extensions
+3. Click the red X button in the top right corner to uninstall
+4. Restart Ghidra as instructed
 
 ## Usage
 
-* Install Ghidra using r2pm or downloading it from the web
+### GUI Mode
+
+The plugin registers a new menu item under the Tools menu of Ghidra's Code Browser to start/stop the embedded web server. Once started, you can:
+
+1. Use the built-in r2 REPL directly within Ghidra
+2. Connect from an external radare2 instance using r2's web protocols
+
+### Headless Mode
+
+The Python script provided in the `ghidra_scripts` directory initializes the R4Ghidra server on port 9191 by default. You can change the port by setting the `R4GHIDRA_PORT` environment variable (or `R2WEB_PORT` for backward compatibility). You should provide this script as `-postScript` when launching headless Ghidra:
 
 ```bash
-$ r2pm -i ghidra
+./support/analyzeHeadless /path/to/project-dir project-name \
+  -process binary_name -postScript /path/to/r4ghidra_headless.py
 ```
 
-* Symlink the R4GhidraScript.java into the ghidra plugins directory
+Note: The older script name `r2web_headless.py` is still available for backward compatibility.
 
-```bash
-$ make install
-````
+### R2 Features Support
 
-* Start ghidra and doubleclick the script to get the http server
+R4Ghidra implements a complete radare2 REPL with support for:
 
-```bash
-$ r2pm -r ghidraRun
-```
+- Common r2 commands (seek, print, analyze, info, etc.)
+- Command syntax features (pipes, redirects, command substitution)
+- Temporary addressing with @ syntax
+- Multiple command execution with @@ syntax
+- Shell command execution
+- File operations (with sandboxing)
+- Environment variables
+- Output filtering with grep-like syntax
+- Command output formatting (JSON, CSV, etc.)
 
-* Attach r2 to the ghidra session
-
-```bash
-$ r2 r2web://localhost:8002/cmd
-```
-
-* Run commands into the ghidra server from r2 or the shell
-
-	* :pdd
-	* !curl http://localhost:8002/cmd/p8%2080
-
-## Sample session
-
-```bash
-$ r2 r2web://localhost:9191/cmd
-[0x00000000]> :?
-Usage: [ghidra-r2web-command .. args]
-?             - show this help message
-?V            - show Ghidra Version information
-?p [vaddr]    - get physical address for given virtual address
-f [name]      - set flag to the current offset inside ghidra (label)
-i             - show program information (arch/bits/hash..)
-/ [string]    - search for given string (which may contain \x hex)
-s ([addr])    - check or set current seek address
-b ([bsize])   - get or set blocksize
-CC [comment]  - add or replace comment in current offset
-Cs            - define a string in the current address
-Cd            - define a dword in the current address
-aa            - analyze all the program
-af            - analyze function in current address
-afi           - get current function information
-afl           - list all functions analyzed by Ghidra
-px            - print Hexdump
-pdd           - print decompilation of current function
-pdd*          - decompile current function as comments for r2
-q             - quit the ghidra-r2web script
-[0x00000000]> \?V
-9.0.4
-[0x00000000]>
-```
-
---pancake
+For more detailed information about the REPL implementation and supported features, see the REPL documentation in the source code.
