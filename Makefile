@@ -3,7 +3,7 @@ TESTBIN=$(shell pwd)/test/ls
 SCRIPT=R4GhidraServer.java
 
 all:
-	@echo Run make install
+	$(MAKE) -C R4Ghidra
 
 oops:
 	analyzeHeadless . Test.gpr -import $(TESTBIN) -postScript $(SCRIPT) $(FCNADDR) -deleteProject

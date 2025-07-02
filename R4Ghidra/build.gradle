@@ -75,6 +75,8 @@ spotless {
 		googleJavaFormat()
 		// Format all Java files in the project
 		target 'src/main/java/**/*.java'
+		// Use tabs for indentation
+		indentWithTabs()
 	}
 }
 
