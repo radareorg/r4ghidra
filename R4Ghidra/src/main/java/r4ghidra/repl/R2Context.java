@@ -1,10 +1,14 @@
 package r4ghidra.repl;
 
+import java.awt.Font;
+import java.awt.GraphicsEnvironment;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
 import ghidra.program.flatapi.FlatProgramAPI;
 import ghidra.program.model.address.Address;
+import r4ghidra.R4CommandShellProvider;
 import r4ghidra.R4GhidraState;
 import r4ghidra.repl.config.R2EvalConfig;
 import r4ghidra.repl.config.R2EvalChangeListener;
@@ -58,6 +62,9 @@ public class R2Context {
     
     // File system abstraction
     private R2FileSystem fileSystem;
+    
+    // Reference to the command shell provider for UI updates
+    private R4CommandShellProvider shellProvider;
 
     /**
      * Create a new context with default values
@@ -147,6 +154,22 @@ public class R2Context {
                 } else {
                     evalConfig.set("cfg.bigendian", "false", false);  // Avoid circular updates
                 }
+            }
+        });
+        
+        // Listen for font name changes
+        evalConfig.registerListener("scr.font", new R2EvalChangeListener() {
+            @Override
+            public void onChange(String key, String oldValue, String newValue) {
+                updateConsoleFont();
+            }
+        });
+        
+        // Listen for font size changes
+        evalConfig.registerListener("scr.fontsize", new R2EvalChangeListener() {
+            @Override
+            public void onChange(String key, String oldValue, String newValue) {
+                updateConsoleFont();
             }
         });
     }
@@ -320,5 +343,53 @@ public class R2Context {
      */
     public R2FileSystem getFileSystem() {
         return fileSystem;
+    }
+    
+    /**
+     * Set the command shell provider for UI updates
+     * 
+     * @param provider The shell provider to use
+     */
+    public void setShellProvider(R4CommandShellProvider provider) {
+        this.shellProvider = provider;
+    }
+    
+    /**
+     * Get the command shell provider
+     * 
+     * @return The shell provider, or null if none is set
+     */
+    public R4CommandShellProvider getShellProvider() {
+        return shellProvider;
+    }
+    
+    /**
+     * Update the console font based on current eval settings
+     */
+    public void updateConsoleFont() {
+        if (shellProvider == null) {
+            return;  // No UI to update
+        }
+        
+        // Get font settings from config
+        String fontName = getEvalConfig().get("scr.font");
+        int fontSize = getEvalConfig().getInt("scr.fontsize");
+        
+        // Check if the font exists
+        boolean hasFont = Arrays.asList(
+            GraphicsEnvironment.getLocalGraphicsEnvironment()
+                .getAvailableFontFamilyNames()
+        ).contains(fontName);
+        
+        // Use monospaced as fallback if font doesn't exist
+        if (!hasFont) {
+            fontName = Font.MONOSPACED;
+        }
+        
+        // Create the new font
+        Font newFont = new Font(fontName, Font.PLAIN, fontSize);
+        
+        // Apply the font to the UI
+        shellProvider.updateFont(newFont);
     }
 }

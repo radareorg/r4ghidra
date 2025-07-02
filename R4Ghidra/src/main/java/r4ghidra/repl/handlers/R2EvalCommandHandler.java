@@ -27,25 +27,30 @@ public class R2EvalCommandHandler implements R2CommandHandler {
         if (!command.hasPrefix("e")) {
             throw new R2CommandException("Not an eval command");
         }
-        
-        // Get access to the configuration manager
+        // Access the configuration manager
         R2EvalConfig config = context.getEvalConfig();
         
-        // Get the subcommand without any suffix
-        String subcommand = command.getSubcommand().trim();
+        // Determine expression: prefer the subcommand (without suffix), else first argument
+        String rawSub = command.getSubcommandWithoutSuffix().trim();
+        String expr;
+        if (!rawSub.isEmpty()) {
+            expr = rawSub;
+        } else if (command.getArgumentCount() > 0) {
+            expr = command.getFirstArgument("");
+        } else {
+            expr = "";
+        }
         
-        // Handle the special case of empty subcommand (list all variables)
-        if (subcommand.isEmpty()) {
+        // List all variables when no expression provided
+        if (expr.isEmpty()) {
             return formatEvalOutput(config.getAll(), command);
         }
-        
-        // Handle the case of setting a variable (contains '=')
-        if (subcommand.contains("=")) {
-            return handleSetVariable(subcommand, config, command);
+        // Set variable when expression contains '='
+        if (expr.contains("=")) {
+            return handleSetVariable(expr, config, command);
         }
-        
-        // Handle the case of querying specific variable(s)
-        return handleQueryVariables(subcommand, config, command);
+        // Query variables (specific or prefix)
+        return handleQueryVariables(expr, config, command);
     }
     
     /**

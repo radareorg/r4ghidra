@@ -41,6 +41,8 @@ public class R2PrintCommandHandler implements R2CommandHandler {
                 return executeP8Command(command, context);
             case "d":
                 return executePdCommand(command, context);
+            case "x":
+                return executePxCommand(command, context);
             default:
                 throw new R2CommandException("Unknown print subcommand: p" + subcommand);
         }
@@ -261,6 +263,100 @@ public class R2PrintCommandHandler implements R2CommandHandler {
     }
     
     /**
+     * Execute the px command to display a classic hexdump
+     */
+    private String executePxCommand(R2Command command, R2Context context) throws R2CommandException {
+        // Parse the count argument using RNum (default to blockSize)
+        int count;
+        try {
+            String countArg = command.getFirstArgument(Integer.toString(context.getBlockSize()));
+            long numValue = R2NumUtil.evaluateExpression(context, countArg);
+            count = (int) numValue;
+            if (count <= 0) {
+                throw new R2CommandException("Invalid byte count: " + count);
+            }
+        } catch (R2NumException e) {
+            throw new R2CommandException("Invalid count expression: " + e.getMessage());
+        }
+        // Get the base address
+        Address baseAddr = context.getCurrentAddress();
+        if (baseAddr == null) {
+            throw new R2CommandException("Current address is not set");
+        }
+        try {
+            byte[] bytes = context.getAPI().getBytes(baseAddr, count);
+            if (command.hasSuffix('j')) {
+                return formatPxJson(bytes, baseAddr, context);
+            }
+            return formatPxText(bytes, baseAddr, context);
+        } catch (Exception e) {
+            throw new R2CommandException("Error reading memory: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Format hexdump as text with address, hex bytes, and ASCII
+     */
+    private String formatPxText(byte[] bytes, Address baseAddr, R2Context context) {
+        StringBuilder sb = new StringBuilder();
+        int lineSize = 16;
+        for (int offset = 0; offset < bytes.length; offset += lineSize) {
+            long addrOffset = baseAddr.getOffset() + offset;
+            sb.append(String.format("0x%08x  ", addrOffset));
+            int end = Math.min(offset + lineSize, bytes.length);
+            // Hex bytes
+            for (int i = offset; i < offset + lineSize; i++) {
+                if (i < end) {
+                    sb.append(String.format("%02x ", bytes[i] & 0xFF));
+                } else {
+                    sb.append("   ");
+                }
+            }
+            sb.append(" ");
+            // ASCII representation
+            sb.append("|");
+            for (int i = offset; i < offset + lineSize; i++) {
+                if (i < end) {
+                    int b = bytes[i] & 0xFF;
+                    char c = (b >= 32 && b < 127) ? (char) b : '.';
+                    sb.append(c);
+                } else {
+                    sb.append(' ');
+                }
+            }
+            sb.append("|");
+            sb.append("\n");
+        }
+        return sb.toString();
+    }
+    
+    /**
+     * Format hexdump as JSON array of objects with address, bytes, and ascii
+     */
+    private String formatPxJson(byte[] bytes, Address baseAddr, R2Context context) {
+        JSONArray array = new JSONArray();
+        int lineSize = 16;
+        for (int offset = 0; offset < bytes.length; offset += lineSize) {
+            long addrOffset = baseAddr.getOffset() + offset;
+            JSONObject obj = new JSONObject();
+            obj.put("addr", addrOffset);
+            JSONArray data = new JSONArray();
+            int end = Math.min(offset + lineSize, bytes.length);
+            StringBuilder ascii = new StringBuilder();
+            for (int i = offset; i < end; i++) {
+                data.put(bytes[i] & 0xFF);
+                int b = bytes[i] & 0xFF;
+                char c = (b >= 32 && b < 127) ? (char) b : '.';
+                ascii.append(c);
+            }
+            obj.put("bytes", data);
+            obj.put("ascii", ascii.toString());
+            array.put(obj);
+        }
+        return array.toString() + "\n";
+    }
+    
+    /**
      * Class to hold disassembled instruction data
      */
     private static class DisassembledInstruction {
@@ -274,15 +370,20 @@ public class R2PrintCommandHandler implements R2CommandHandler {
     @Override
     public String getHelp() {
         StringBuilder help = new StringBuilder();
-        help.append("Usage: p[8|d][j] [count]\n");
+        help.append("Usage: p[8|d|x][j] [count]\n");
         help.append(" p8 [len]     print hexadecimal bytes\n");
         help.append(" p8j [len]    print hexadecimal bytes as json array\n");
+        help.append(" px [len]     print hexdump (addr bytes ascii)\n");
+        help.append(" pxj [len]    print hexdump as json array\n");
         help.append(" pd [n]       print disassembly with n instructions\n");
         help.append(" pdj [n]      print disassembly as json\n");
         help.append("\nExamples:\n");
         help.append(" p8 16        print 16 bytes in hex\n");
         help.append(" p8 0x10      print 16 bytes in hex (using hex number)\n");
         help.append(" p8j 4        print 4 bytes as json array\n");
+        help.append(" px           print hexdump using default block size\n");
+        help.append(" px 32        print 32 bytes hexdump\n");
+        help.append(" pxj 16       print 16 bytes hexdump as json\n");
         help.append(" pd           print 10 disassembled instructions\n");
         help.append(" pd 20        print 20 disassembled instructions\n");
         help.append(" pdj 5        print 5 disassembled instructions as json\n");

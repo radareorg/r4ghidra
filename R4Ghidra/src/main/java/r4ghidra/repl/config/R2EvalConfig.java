@@ -61,6 +61,8 @@ public class R2EvalConfig {
         // Screen settings
         set("scr.color", "1", false);
         set("scr.prompt", "true", false);
+        set("scr.font", "STMono", false);
+        set("scr.fontsize", "12", false);
         
         // Directory settings
         set("dir.tmp", "/tmp", false);

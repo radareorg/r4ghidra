@@ -94,7 +94,7 @@ public class R4CommandShellProvider extends ComponentProvider {
 
     private JPanel mainPanel;
     // Font to use for shell UI
-    private final Font shellFont;
+    private Font shellFont;
     private JTextArea outputArea;
     private JTextField commandField;
     private JButton executeButton;
@@ -120,6 +120,9 @@ public class R4CommandShellProvider extends ComponentProvider {
         shellFont = new Font(fontName, Font.PLAIN, 12);
 
         repl = new R2REPLImpl();
+        
+        // Register the shell provider with the REPL context for font updates
+        repl.getContext().setShellProvider(this);
 
         // Register all command handlers from the plugin
         Map<String, R2CommandHandler> commandRegistry = new HashMap<>();
@@ -256,6 +259,28 @@ public class R4CommandShellProvider extends ComponentProvider {
 
         // Request focus back to command field
         commandField.requestFocusInWindow();
+    }
+    
+    /**
+     * Update the font used in the console
+     * 
+     * @param newFont The new font to use
+     */
+    public void updateFont(Font newFont) {
+        if (newFont == null) {
+            return;
+        }
+        
+        this.shellFont = newFont;
+        
+        // Update the font on the UI components
+        if (outputArea != null) {
+            outputArea.setFont(newFont);
+        }
+        
+        if (commandField != null) {
+            commandField.setFont(newFont);
+        }
     }
 
     @Override

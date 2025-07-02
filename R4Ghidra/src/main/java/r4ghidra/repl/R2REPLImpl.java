@@ -107,6 +107,19 @@ public class R2REPLImpl {
             
             // Parse the command
             R2Command cmd = parseCommand(cmdStr);
+            // If the suffix is '?', show help for this command prefix
+            if (cmd.getCommandSuffix().charValue() == '?') {
+                R2CommandHandler helpHandler = commandRegistry.get(cmd.getPrefix());
+                if (helpHandler != null) {
+                    return helpHandler.getHelp();
+                }
+                // If no specific handler, show general help for all commands
+                StringBuilder allHelp = new StringBuilder();
+                for (R2CommandHandler h : commandRegistry.values()) {
+                    allHelp.append(h.getHelp()).append("\n");
+                }
+                return allHelp.toString();
+            }
             
             // Handle @@ syntax for multiple command execution
             if (cmd.hasMultiAddressInfo()) {
