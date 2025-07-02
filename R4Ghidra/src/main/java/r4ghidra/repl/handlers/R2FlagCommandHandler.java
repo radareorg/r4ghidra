@@ -24,6 +24,9 @@ public class R2FlagCommandHandler implements R2CommandHandler {
     // Pattern for flag set with address (f name=0x123)
     private static final Pattern FLAG_SET_ADDR_PATTERN = Pattern.compile("([a-zA-Z0-9._-]+)=(.+)");
     
+    // Pattern for flag definition with size and address (f name size addr)
+    private static final Pattern FLAG_DEF_PATTERN = Pattern.compile("([a-zA-Z0-9._-]+)\\s+(\\d+)\\s+(.+)");
+    
     // Pattern for flag delete (f-name)
     private static final Pattern FLAG_DELETE_PATTERN = Pattern.compile("-(.+)");
 
@@ -57,6 +60,30 @@ public class R2FlagCommandHandler implements R2CommandHandler {
             return ""; // Silent success
         }
         
+        // Check for flag definition with size and address (f name size addr)
+        // This needs to come before the name=addr pattern to correctly handle the size syntax
+        if (command.getArgumentCount() >= 2) {
+            String flagName = command.getFirstArgument("");
+            String sizeStr = command.getArgument(1, "");
+            String addrStr = command.getArgument(2, "");
+            
+            if (!flagName.isEmpty() && !sizeStr.isEmpty() && !addrStr.isEmpty()) {
+                try {
+                    int size = Integer.parseInt(sizeStr);
+                    long addr = context.parseAddress(addrStr).getOffset();
+                    boolean success = context.setFlag(flagName, addr, size);
+                    if (!success) {
+                        throw new R2CommandException("Failed to set flag '" + flagName + "'");
+                    }
+                    return ""; // Silent success
+                } catch (NumberFormatException e) {
+                    throw new R2CommandException("Invalid flag size: " + sizeStr);
+                } catch (Exception e) {
+                    throw new R2CommandException("Invalid address: " + addrStr);
+                }
+            }
+        }
+        
         // Flag creation with specific address (f name=0x123)
         Matcher addrMatcher = FLAG_SET_ADDR_PATTERN.matcher(subcommand);
         if (addrMatcher.matches()) {
@@ -67,6 +94,31 @@ public class R2FlagCommandHandler implements R2CommandHandler {
                 // Parse the address using the context's expression evaluator
                 long addr = context.parseAddress(addrStr).getOffset();
                 boolean success = context.setFlag(flagName, addr);
+                if (!success) {
+                    throw new R2CommandException("Failed to set flag '" + flagName + "'");
+                }
+                return ""; // Silent success
+            } catch (Exception e) {
+                throw new R2CommandException("Invalid address: " + addrStr);
+            }
+        }
+        
+        // Check for flag definition with size and address (f name size addr)
+        Matcher defMatcher = FLAG_DEF_PATTERN.matcher(subcommand);
+        if (defMatcher.matches()) {
+            String flagName = defMatcher.group(1);
+            int size;
+            try {
+                size = Integer.parseInt(defMatcher.group(2));
+            } catch (NumberFormatException e) {
+                throw new R2CommandException("Invalid flag size: " + defMatcher.group(2));
+            }
+            
+            String addrStr = defMatcher.group(3);
+            try {
+                // Parse the address using the context's expression evaluator
+                long addr = context.parseAddress(addrStr).getOffset();
+                boolean success = context.setFlag(flagName, addr, size);
                 if (!success) {
                     throw new R2CommandException("Failed to set flag '" + flagName + "'");
                 }
@@ -126,6 +178,7 @@ public class R2FlagCommandHandler implements R2CommandHandler {
                 flag.put("name", entry.getKey());
                 flag.put("offset", entry.getValue());
                 flag.put("address", context.formatAddress(entry.getValue()));
+                flag.put("size", context.getFlagSize(entry.getKey())); // Include flag size
                 jsonFlags.put(flag);
             }
             return jsonFlags.toString() + "\n";
@@ -134,9 +187,12 @@ public class R2FlagCommandHandler implements R2CommandHandler {
         else if (command.hasSuffix('*')) {
             StringBuilder sb = new StringBuilder();
             for (Map.Entry<String, Long> entry : flags.entrySet()) {
+                String flagName = entry.getKey();
                 sb.append("f ")
-                  .append(entry.getKey())
-                  .append("=")
+                  .append(flagName)
+                  .append(" ")
+                  .append(context.getFlagSize(flagName))
+                  .append(" ")
                   .append(context.formatAddress(entry.getValue()))
                   .append("\n");
             }
@@ -158,9 +214,12 @@ public class R2FlagCommandHandler implements R2CommandHandler {
             
             // Format the output
             for (Map.Entry<String, Long> entry : flags.entrySet()) {
+                String flagName = entry.getKey();
                 sb.append(context.formatAddress(entry.getValue()));
                 sb.append(" ");
-                sb.append(entry.getKey());
+                sb.append(String.format("%3d", context.getFlagSize(flagName))); // Display size
+                sb.append(" ");
+                sb.append(flagName);
                 sb.append("\n");
             }
             
@@ -215,6 +274,7 @@ public class R2FlagCommandHandler implements R2CommandHandler {
         sb.append(" f                list flags in current flagspace\n");
         sb.append(" f name           set flag at current address\n");
         sb.append(" f name=addr      set flag at address\n");
+        sb.append(" f name size addr set flag with size at address\n");
         sb.append(" f-name           remove flag\n");
         sb.append(" f*               list flags in r2 commands\n");
         sb.append(" fj               list flags in JSON format\n");

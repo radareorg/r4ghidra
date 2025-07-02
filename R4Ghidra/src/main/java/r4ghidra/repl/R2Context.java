@@ -67,6 +67,9 @@ public class R2Context {
     // Flag storage (maps flag names to addresses)
     private Map<String, Long> flags;
     
+    // Flag sizes (maps flag names to their sizes)
+    private Map<String, Integer> flagSizes;
+    
     // Current flagspace
     private String currentFlagspace;
     
@@ -88,6 +91,7 @@ public class R2Context {
         
         // Initialize flag storage
         this.flags = new TreeMap<>();
+        this.flagSizes = new HashMap<>();
         this.currentFlagspace = "*";
         
         // Initialize the eval config
@@ -412,12 +416,26 @@ public class R2Context {
      * @return true if the flag was set successfully, false otherwise
      */
     public boolean setFlag(String name, long address) {
-        if (name == null || name.isEmpty()) {
+        return setFlag(name, address, 1); // Default size is 1 byte
+    }
+    
+    /**
+     * Set a flag at the specified address with a specific size
+     * 
+     * @param name The name of the flag
+     * @param address The address to set the flag at
+     * @param size The size of the flag in bytes
+     * @return true if the flag was set successfully, false otherwise
+     */
+    public boolean setFlag(String name, long address, int size) {
+        if (name == null || name.isEmpty() || size <= 0) {
             return false;
         }
         
-        // Store the flag
-        flags.put(formatFlagName(name), address);
+        String formattedName = formatFlagName(name);
+        // Store the flag and its size
+        flags.put(formattedName, address);
+        flagSizes.put(formattedName, size);
         return true;
     }
     
@@ -454,6 +472,7 @@ public class R2Context {
         String formattedName = formatFlagName(name);
         if (flags.containsKey(formattedName)) {
             flags.remove(formattedName);
+            flagSizes.remove(formattedName); // Also remove the size information
             return true;
         }
         return false;
@@ -466,6 +485,26 @@ public class R2Context {
      */
     public Map<String, Long> getFlags() {
         return new HashMap<>(flags);
+    }
+    
+    /**
+     * Get the size of a flag
+     * 
+     * @param name The name of the flag
+     * @return The size of the flag in bytes, or 1 if not explicitly set
+     */
+    public int getFlagSize(String name) {
+        String formattedName = formatFlagName(name);
+        return flagSizes.getOrDefault(formattedName, 1); // Default size is 1 byte
+    }
+    
+    /**
+     * Get all flag sizes
+     * 
+     * @return A map of flag names to sizes
+     */
+    public Map<String, Integer> getFlagSizes() {
+        return new HashMap<>(flagSizes);
     }
     
     /**

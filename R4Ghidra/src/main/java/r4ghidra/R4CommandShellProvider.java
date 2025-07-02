@@ -22,6 +22,7 @@ import java.awt.event.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Arrays;
+import java.util.ArrayList;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.text.DefaultCaret;
@@ -68,6 +69,8 @@ public class R4CommandShellProvider extends ComponentProvider {
     private JTextField commandField;
     private JButton executeButton;
     private R2REPLImpl repl;
+    private ArrayList<String> commandHistory;
+    private int historyIndex = -1;
 
     /**
      * Constructor
@@ -90,6 +93,7 @@ public class R4CommandShellProvider extends ComponentProvider {
         shellFont = new Font(Font.MONOSPACED, Font.BOLD, 12);
 
         repl = new R2REPLImpl();
+        commandHistory = new ArrayList<>();
         
         // Register the shell provider with the REPL context for font updates
         repl.getContext().setShellProvider(this);
@@ -121,8 +125,13 @@ public class R4CommandShellProvider extends ComponentProvider {
                     }
 
                     if (!prefix.isEmpty()) {
-                        commandRegistry.put(prefix, handler);
-                    }
+                        // Special case for 'x' command alias
+                        // If the help text contains "x[j]" pattern, it's our x alias
+                        if (help.contains("x[j]")) {
+                            commandRegistry.put("x", handler);
+                        } else {
+                            commandRegistry.put(prefix, handler);
+                        }
                 }
             }
         }
@@ -143,6 +152,7 @@ public class R4CommandShellProvider extends ComponentProvider {
 
         buildPanel();
         setHelpLocation(new HelpLocation("R4Ghidra", "CommandShell"));
+}
     }
 
     /**
@@ -180,13 +190,19 @@ public class R4CommandShellProvider extends ComponentProvider {
         commandField = new JTextField();
         commandField.setFont(shellFont);
 
-        // Handle Enter key in the command field
+        // Handle Enter key and up/down keys in the command field
         commandField.addKeyListener(
             new KeyAdapter() {
                 @Override
                 public void keyPressed(KeyEvent e) {
                     if (e.getKeyCode() == KeyEvent.VK_ENTER) {
                         executeCommand();
+                    } else if (e.getKeyCode() == KeyEvent.VK_UP || (e.isControlDown() && e.getKeyCode() == KeyEvent.VK_P)) {
+                        // Up arrow or Ctrl+P: Show previous command
+                        showPreviousCommand();
+                    } else if (e.getKeyCode() == KeyEvent.VK_DOWN || (e.isControlDown() && e.getKeyCode() == KeyEvent.VK_N)) {
+                        // Down arrow or Ctrl+N: Show next command
+                        showNextCommand();
                     }
                 }
             }
@@ -224,6 +240,14 @@ public class R4CommandShellProvider extends ComponentProvider {
         // Scroll output to bottom
         outputArea.setCaretPosition(outputArea.getDocument().getLength());
 
+        // Add the command to history if it's not empty and not a duplicate of the last command
+        if (!command.isEmpty()) {
+            if (commandHistory.isEmpty() || !command.equals(commandHistory.get(commandHistory.size() - 1))) {
+                commandHistory.add(command);
+            }
+            historyIndex = commandHistory.size();
+        }
+        
         // Clear the command field
         commandField.setText("");
 
@@ -252,7 +276,62 @@ public class R4CommandShellProvider extends ComponentProvider {
             commandField.setFont(newFont);
         }
     }
-
+    
+    /**
+     * Clear the output text area
+     * This method is called by the clear command handler
+     */
+    public void clearOutputArea() {
+        if (outputArea != null) {
+            outputArea.setText("");
+        }
+    }
+    
+    /**
+     * Show the previous command in the history
+     */
+    private void showPreviousCommand() {
+        if (commandHistory.isEmpty()) {
+            return;
+        }
+        
+        // If we're at the end of the history, save the current text
+        if (historyIndex == commandHistory.size()) {
+            String currentText = commandField.getText().trim();
+            if (!currentText.isEmpty()) {
+                // Temporarily store the current unexecuted text
+                commandHistory.add(currentText);
+                // But we'll remove it once we execute a command or leave the field
+            }
+        }
+        
+        if (historyIndex > 0) {
+            historyIndex--;
+            commandField.setText(commandHistory.get(historyIndex));
+            // Position cursor at end of text
+            commandField.setCaretPosition(commandField.getText().length());
+        }
+    }
+    
+    /**
+     * Show the next command in the history
+     */
+    private void showNextCommand() {
+        if (commandHistory.isEmpty() || historyIndex >= commandHistory.size() - 1) {
+            // At the end of history, clear the field
+            if (historyIndex == commandHistory.size() - 1) {
+                historyIndex = commandHistory.size();
+                commandField.setText("");
+            }
+            return;
+        }
+        
+        historyIndex++;
+        commandField.setText(commandHistory.get(historyIndex));
+        // Position cursor at end of text
+        commandField.setCaretPosition(commandField.getText().length());
+    }
+    
     @Override
     public JComponent getComponent() {
         return mainPanel;

@@ -54,6 +54,12 @@ public class R2REPLImpl {
         }
         
         try {
+            // Check for semicolon-separated commands
+            int semicolonIndex = findUnquotedChar(cmdStr, ';');
+            if (semicolonIndex > 0) {
+                return executeSemicolonSeparatedCommands(cmdStr);
+            }
+            
             // Check for append redirection (>>)
             int appendIndex = findUnquotedString(cmdStr, ">>");
             if (appendIndex > 0) {
@@ -357,6 +363,8 @@ public class R2REPLImpl {
     /**
      * Execute a command that starts with a single quote.
      * This will process the command as a literal string without interpreting special characters.
+     * According to the requirement, if a command starts with a single quote, any semicolons after that
+     * will be ignored (not treated as command separators).
      * 
      * @param quotedStr The quoted command string
      * @return The result of the command execution
@@ -369,6 +377,10 @@ public class R2REPLImpl {
         if (cmdStr.isEmpty()) {
             throw new R2CommandException("Empty quoted command");
         }
+        
+        // If there are semicolons in the quoted command, they are treated as regular characters
+        // and not as command separators - this is handled because we're executing this command directly
+        // without passing it back through executeCommand
         
         String prefix = String.valueOf(cmdStr.charAt(0));
         String subcommand = cmdStr.length() > 1 ? cmdStr.substring(1) : "";
@@ -493,6 +505,91 @@ public class R2REPLImpl {
         
         matcher.appendTail(result);
         return result.toString();
+    }
+    
+    /**
+     * Execute multiple commands separated by semicolons
+     * 
+     * @param cmdStr The command string containing semicolon-separated commands
+     * @return The combined result of all commands
+     */
+    private String executeSemicolonSeparatedCommands(String cmdStr) throws R2CommandException {
+        StringBuilder result = new StringBuilder();
+        
+        // Split the command string by semicolons, respecting quotes
+        String[] commands = splitBySemicolon(cmdStr);
+        
+        // Execute each command and combine the results
+        for (String cmd : commands) {
+            String trimmedCmd = cmd.trim();
+            if (!trimmedCmd.isEmpty()) {
+                String cmdResult = executeCommand(trimmedCmd);
+                result.append(cmdResult);
+                
+                // Add a newline separator between command results if needed
+                if (!cmdResult.isEmpty() && !cmdResult.endsWith("\n")) {
+                    result.append("\n");
+                }
+            }
+        }
+        
+        return result.toString();
+    }
+    
+    /**
+     * Split a command string by semicolons, respecting quotes and handling the special case
+     * where a command starts with a single quote (in which case semicolons are not treated as separators).
+     * 
+     * @param cmdStr The command string to split
+     * @return An array of individual commands
+     */
+    private String[] splitBySemicolon(String cmdStr) {
+        java.util.List<String> commands = new java.util.ArrayList<>();
+        
+        boolean inSingleQuotes = false;
+        boolean inDoubleQuotes = false;
+        int lastSplitPos = 0;
+        
+        for (int i = 0; i < cmdStr.length(); i++) {
+            char c = cmdStr.charAt(i);
+            
+            // Special case: if we see a single quote at the beginning of a command segment,
+            // anything after that within this segment will be treated as a literal (no semicolon splitting)
+            if (i == lastSplitPos && c == '\'') {
+                // Find the next semicolon outside of any quotes (to find the end of this command)
+                int nextSemicolon = findUnquotedChar(cmdStr.substring(i), ';');
+                if (nextSemicolon == -1) {
+                    // No more semicolons, add the rest as a single command
+                    commands.add(cmdStr.substring(lastSplitPos));
+                    break;
+                } else {
+                    // Add everything up to the semicolon as one command
+                    commands.add(cmdStr.substring(lastSplitPos, i + nextSemicolon));
+                    lastSplitPos = i + nextSemicolon + 1;
+                    i = lastSplitPos - 1; // Adjust i to resume from the new position
+                }
+                continue;
+            }
+            
+            // Handle quotes for regular processing
+            if (c == '\'' && !inDoubleQuotes) {
+                inSingleQuotes = !inSingleQuotes;
+            } else if (c == '"' && !inSingleQuotes) {
+                inDoubleQuotes = !inDoubleQuotes;
+            } 
+            // Split on semicolon when not in quotes
+            else if (c == ';' && !inSingleQuotes && !inDoubleQuotes) {
+                commands.add(cmdStr.substring(lastSplitPos, i));
+                lastSplitPos = i + 1;
+            }
+        }
+        
+        // Add the last command if there's anything left
+        if (lastSplitPos < cmdStr.length()) {
+            commands.add(cmdStr.substring(lastSplitPos));
+        }
+        
+        return commands.toArray(new String[0]);
     }
     
     /**

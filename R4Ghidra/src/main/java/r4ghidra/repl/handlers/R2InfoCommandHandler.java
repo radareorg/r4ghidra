@@ -41,7 +41,6 @@ public class R2InfoCommandHandler implements R2CommandHandler {
      * Execute the basic info command to show program information
      */
     private String executeBasicInfoCommand(R2Command command, R2Context context) throws R2CommandException {
-        try {
             Program program = context.getAPI().getCurrentProgram();
             if (program == null) {
                 throw new R2CommandException("No program is loaded");
@@ -89,9 +88,6 @@ public class R2InfoCommandHandler implements R2CommandHandler {
             } else {
                 return formatInfoText(program, arch, bits, processor);
             }
-        } catch (Exception e) {
-            throw new R2CommandException("Error retrieving program information: " + e.getMessage());
-        }
     }
     
     /**
