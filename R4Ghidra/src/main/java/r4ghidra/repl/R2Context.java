@@ -390,14 +390,20 @@ public class R2Context {
         String fontName = getEvalConfig().get("scr.font");
         int fontSize = getEvalConfig().getInt("scr.fontsize");
         
-        // Check if the font exists
-        boolean hasFont = Arrays.asList(
-            GraphicsEnvironment.getLocalGraphicsEnvironment()
-                .getAvailableFontFamilyNames()
-        ).contains(fontName);
+        // Get all available fonts
+        String[] availableFonts = GraphicsEnvironment.getLocalGraphicsEnvironment()
+            .getAvailableFontFamilyNames();
         
-        // Use monospaced as fallback if font doesn't exist
+        // Check if the font exists
+        boolean hasFont = Arrays.asList(availableFonts).contains(fontName);
+        
+if (fontName.equals("?")) {
+            showAvailableFontsDialog(availableFonts);
+return;
+}
+        // Show font selection dialog if font doesn't exist
         if (!hasFont || fontName.equals("")) {
+            // Use monospaced as fallback
             fontName = Font.MONOSPACED;
         }
         
@@ -406,6 +412,66 @@ public class R2Context {
         
         // Apply the font to the UI
         shellProvider.updateFont(newFont);
+    }
+    
+    /**
+     * Show a dialog with available font family names
+     * 
+     * @param availableFonts Array of available font family names
+     */
+    private void showAvailableFontsDialog(String[] availableFonts) {
+        // Create a frame for the dialog
+        javax.swing.JFrame frame = shellProvider.getToolFrame();
+        
+        // Create a list model with the font names
+        javax.swing.DefaultListModel<String> listModel = new javax.swing.DefaultListModel<>();
+        for (String fontName : availableFonts) {
+            listModel.addElement(fontName);
+        }
+        
+        // Create a list with the model
+        javax.swing.JList<String> fontList = new javax.swing.JList<>(listModel);
+        fontList.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+        
+        // Add the list to a scroll pane
+        javax.swing.JScrollPane scrollPane = new javax.swing.JScrollPane(fontList);
+        scrollPane.setPreferredSize(new java.awt.Dimension(300, 400));
+        
+        // Create a panel for the buttons
+        javax.swing.JPanel buttonPanel = new javax.swing.JPanel();
+        javax.swing.JButton selectButton = new javax.swing.JButton("Select Font");
+        javax.swing.JButton cancelButton = new javax.swing.JButton("Cancel");
+        buttonPanel.add(selectButton);
+        buttonPanel.add(cancelButton);
+        
+        // Create a panel for the dialog content
+        javax.swing.JPanel dialogPanel = new javax.swing.JPanel(new java.awt.BorderLayout());
+        dialogPanel.add(new javax.swing.JLabel("Available Font Families:"), java.awt.BorderLayout.NORTH);
+        dialogPanel.add(scrollPane, java.awt.BorderLayout.CENTER);
+        dialogPanel.add(buttonPanel, java.awt.BorderLayout.SOUTH);
+        
+        // Create the dialog
+        javax.swing.JDialog dialog = new javax.swing.JDialog(frame, "Font Selection", true);
+        dialog.setContentPane(dialogPanel);
+        dialog.pack();
+        dialog.setLocationRelativeTo(frame);
+        
+        // Add action listeners to buttons
+        selectButton.addActionListener(e -> {
+            String selectedFont = fontList.getSelectedValue();
+            if (selectedFont != null) {
+                // Update the font configuration
+                getEvalConfig().set("scr.font", selectedFont);
+            }
+            dialog.dispose();
+        });
+        
+        cancelButton.addActionListener(e -> {
+            dialog.dispose();
+        });
+        
+        // Show the dialog
+        dialog.setVisible(true);
     }
     
     /**

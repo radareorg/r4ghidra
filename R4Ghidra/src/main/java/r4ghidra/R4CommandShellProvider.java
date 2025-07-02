@@ -278,6 +278,15 @@ public class R4CommandShellProvider extends ComponentProvider {
     }
     
     /**
+     * Get the tool frame for dialog positioning
+     * 
+     * @return The JFrame of the tool
+     */
+    public javax.swing.JFrame getToolFrame() {
+        return (javax.swing.JFrame) SwingUtilities.getWindowAncestor(getComponent());
+    }
+    
+    /**
      * Clear the output text area
      * This method is called by the clear command handler
      */
