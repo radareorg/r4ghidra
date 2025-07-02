@@ -169,12 +169,45 @@ public class R4GhidraPlugin extends ProgramPlugin {
 	@Override
 	protected void programOpened(Program program) {
 		R4GhidraState.api = new FlatProgramAPI(program);
-		R4GhidraState.r2Seek = R4GhidraState.api.toAddr(0);
+		
+		// Set initial seek to the current cursor position in the UI
+		R4GhidraState.r2Seek = getCurrentAddressFromUI(program);
 		
 		// Create the command shell when a program is opened
 		if (shellProvider == null) {
 			shellProvider = new R4CommandShellProvider(this, "R4Ghidra Shell");
 		}
+	}
+	
+	/**
+	 * Get the current address from the UI cursor position
+	 * Falls back to program entry point, or image base if entry point is not available
+	 */
+	private Address getCurrentAddressFromUI(Program program) {
+		// Try to get the current cursor position from the tool
+		try {
+			Object currentLocation = getTool().getService(ghidra.app.services.GoToService.class).getDefaultNavigatable().getLocation();
+			if (currentLocation != null && currentLocation instanceof ghidra.program.util.ProgramLocation) {
+				return ((ghidra.program.util.ProgramLocation) currentLocation).getAddress();
+			}
+		} catch (Exception e) {
+			// Fall through to other methods if this fails
+		}
+		
+		// Try to get the program entry point
+		try {
+			if (program.getExecutablePath() != null) {
+				Address entryPoint = program.getImageBase();
+				if (entryPoint != null) {
+					return entryPoint;
+				}
+			}
+		} catch (Exception e) {
+			// Fall through to using image base
+		}
+		
+		// Fall back to program image base
+		return program.getImageBase();
 	}
 	
 	@Override
