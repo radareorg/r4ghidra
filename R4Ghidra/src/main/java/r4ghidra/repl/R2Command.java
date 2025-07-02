@@ -66,24 +66,23 @@ public class R2Command {
      * @return The command suffix character, or null if none
      */
     public Character getCommandSuffix() {
+        // If no subcommand, return default suffix '\0'
         if (subcommand == null || subcommand.isEmpty()) {
-            return null;
+            return Character.valueOf((char) 0);
         }
-        
         // Special case for "?*" suffix (recursive help)
         if (subcommand.endsWith("?*")) {
-            return '*';  // Return '*' to indicate recursive help
+            return Character.valueOf('*');  // Return '*' for recursive help
         }
-        
+        // Last character of subcommand
         char lastChar = subcommand.charAt(subcommand.length() - 1);
-        
         // Check if the last character is one of the special suffixes
-        if (lastChar == 'j' || lastChar == '*' || lastChar == ',' || 
+        if (lastChar == 'j' || lastChar == '*' || lastChar == ',' ||
             lastChar == '?' || lastChar == 'q') {
-            return lastChar;
+            return Character.valueOf(lastChar);
         }
-        
-        return null;
+        // Default: no suffix, return '\0'
+        return Character.valueOf((char) 0);
     }
     
     /**
@@ -98,10 +97,11 @@ public class R2Command {
         }
         
         Character suffix = getCommandSuffix();
-        if (suffix == null) {
+        // If no suffix (zero char), return original subcommand
+        if (suffix.charValue() == (char) 0) {
             return subcommand;
         }
-        
+        // Strip one character suffix
         return subcommand.substring(0, subcommand.length() - 1);
     }
     

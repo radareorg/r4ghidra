@@ -21,6 +21,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Arrays;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.text.DefaultCaret;
@@ -92,6 +93,8 @@ public class R4CommandShellProvider extends ComponentProvider {
     }
 
     private JPanel mainPanel;
+    // Font to use for shell UI
+    private final Font shellFont;
     private JTextArea outputArea;
     private JTextField commandField;
     private JButton executeButton;
@@ -107,6 +110,14 @@ public class R4CommandShellProvider extends ComponentProvider {
         super(plugin.getTool(), title, title);
         // Add this provider to the Window menu
         setWindowMenuGroup("R4Ghidra");
+        // Determine font: prefer STMono, fallback to monospaced
+        String desiredFont = "STMono";
+        boolean hasDesired = Arrays.asList(
+            GraphicsEnvironment.getLocalGraphicsEnvironment()
+                .getAvailableFontFamilyNames()
+        ).contains(desiredFont);
+        String fontName = hasDesired ? desiredFont : Font.MONOSPACED;
+        shellFont = new Font(fontName, Font.PLAIN, 12);
 
         repl = new R2REPLImpl();
 
@@ -171,7 +182,7 @@ public class R4CommandShellProvider extends ComponentProvider {
         // Create the output area (top row)
         outputArea = new JTextArea();
         outputArea.setEditable(false);
-        outputArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        outputArea.setFont(shellFont);
         outputArea.setBackground(Color.BLACK);
         outputArea.setForeground(Color.WHITE);
         outputArea.setText(
@@ -194,7 +205,7 @@ public class R4CommandShellProvider extends ComponentProvider {
 
         // Command input field
         commandField = new JTextField();
-        commandField.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        commandField.setFont(shellFont);
 
         // Handle Enter key in the command field
         commandField.addKeyListener(
@@ -237,6 +248,8 @@ public class R4CommandShellProvider extends ComponentProvider {
 
         // Display the result
         outputArea.append(result + "\n");
+        // Scroll output to bottom
+        outputArea.setCaretPosition(outputArea.getDocument().getLength());
 
         // Clear the command field
         commandField.setText("");

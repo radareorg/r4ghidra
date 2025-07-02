@@ -141,7 +141,9 @@ public class R4GhidraPlugin extends ProgramPlugin {
 	}
 
 	// If provider is desired, it is recommended to move it to its own file
-	private static class MyProvider extends ComponentProvider {
+       private static class MyProvider extends ComponentProvider {
+           // Reference to the owning plugin (cast from PluginTool)
+           private final R4GhidraPlugin plugin;
 
 		private JPanel panel;
        private DockingAction startAction;
@@ -149,46 +151,33 @@ public class R4GhidraPlugin extends ProgramPlugin {
        private DockingAction commandShellAction;
        private DockingAction settingsAction;
 
-		public MyProvider(Plugin plugin, String owner) {
-			super(plugin.getTool(), owner, owner);
-			createActions();
-		}
+           public MyProvider(Plugin plugin, String owner) {
+               super(plugin.getTool(), owner, owner);
+               // Store reference to the owning plugin
+               this.plugin = (R4GhidraPlugin) plugin;
+               createActions();
+           }
 		
 		/**
 		 * Shows the R4Ghidra command shell
 		 */
-		private void showCommandShell() {
-			// Get the plugin directly from the dockingTool
-			PluginTool pluginTool = (PluginTool)dockingTool;
-			R4GhidraPlugin plugin = pluginTool.getService(R4GhidraPlugin.class);
-			
-			if (plugin != null) {
-				try {
-					// Create the shell provider if it doesn't exist
-					if (plugin.shellProvider == null) {
-						plugin.shellProvider = new R4CommandShellProvider(plugin, "R4Ghidra Command Shell");
-					}
-					
-					// Add the component to the tool if not already added
-					if (!plugin.shellProviderAdded) {
-						pluginTool.addComponentProvider(plugin.shellProvider, true);
-						plugin.shellProviderAdded = true;
-					}
-					
-					// Show as component provider and ensure visibility
-					pluginTool.showComponentProvider(plugin.shellProvider, true);
-					
-					// Ensure the console is visible by bringing it to front
-					plugin.shellProvider.toFront();
-
-				} catch (Exception e) {
-					System.err.println("Error showing R4Ghidra command shell: " + e.getMessage());
-					e.printStackTrace();
-					// Show error in GUI dialog
-					docking.widgets.OkDialog.showError("R4Ghidra Error", "Error opening command shell: " + e.getMessage());
-				}
-			}
-		}
+           private void showCommandShell() {
+               if (plugin != null) {
+                   try {
+                       // Instantiate the shell provider if needed
+                       if (plugin.shellProvider == null) {
+                           plugin.shellProvider = new R4CommandShellProvider(plugin, "R4Ghidra Command Shell");
+                       }
+                       // Bring up the command shell dialog
+                       plugin.shellProvider.toFront();
+                   }
+                   catch (Exception e) {
+                       System.err.println("Error showing R4Ghidra command shell: " + e.getMessage());
+                       e.printStackTrace();
+                       OkDialog.showError("R4Ghidra Error", "Error opening command shell: " + e.getMessage());
+                   }
+               }
+           }
 
 		// Customize actions
 		private void createActions() {
