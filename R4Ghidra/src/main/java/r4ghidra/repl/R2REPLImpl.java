@@ -9,6 +9,7 @@ import java.util.regex.Pattern;
 
 import ghidra.program.model.address.Address;
 import r4ghidra.repl.filesystem.R2FileSystemException;
+import r4ghidra.repl.handlers.R2HistoryCommandHandler;
 
 /**
  * Radare2 REPL Implementation
@@ -24,12 +25,16 @@ public class R2REPLImpl {
     // Context that can be accessed by command handlers
     private R2Context context;
     
+    // History command handler to track command history
+    private R2HistoryCommandHandler historyHandler;
+    
     /**
      * Create a new R2 REPL implementation
      */
     public R2REPLImpl() {
         commandRegistry = new HashMap<>();
         context = new R2Context();
+        historyHandler = new R2HistoryCommandHandler();
     }
     
     /**
@@ -39,7 +44,12 @@ public class R2REPLImpl {
      * @param handler The handler implementation
      */
     public void registerCommand(String prefix, R2CommandHandler handler) {
-        commandRegistry.put(prefix, handler);
+        if (prefix.equals("!") && handler != historyHandler) {
+            // Store the original shell handler in the history handler to delegate shell commands
+            commandRegistry.put(prefix, historyHandler);
+        } else {
+            commandRegistry.put(prefix, handler);
+        }
     }
     
     /**
@@ -51,6 +61,11 @@ public class R2REPLImpl {
     public String executeCommand(String cmdStr) {
         if (cmdStr == null || cmdStr.trim().isEmpty()) {
             return "";
+        }
+        
+        // Add command to history
+        if (historyHandler != null) {
+            historyHandler.addToHistory(cmdStr);
         }
         
         try {
@@ -968,5 +983,14 @@ public class R2REPLImpl {
     
     public R2Context getContext() {
         return context;
+    }
+    
+    /**
+     * Get the history command handler
+     * 
+     * @return The history command handler
+     */
+    public R2HistoryCommandHandler getHistoryHandler() {
+        return historyHandler;
     }
 }

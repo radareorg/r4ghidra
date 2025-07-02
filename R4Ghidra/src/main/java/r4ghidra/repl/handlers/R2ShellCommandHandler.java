@@ -8,6 +8,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import r4ghidra.repl.R2Command;
+import r4ghidra.repl.handlers.R2HistoryCommandHandler;
+
 import org.json.JSONObject;
 
 import r4ghidra.repl.R2Command;
@@ -110,7 +113,17 @@ public class R2ShellCommandHandler implements R2CommandHandler {
      */
     private String executeShell(String shellCmd) throws R2CommandException {
         if (shellCmd.isEmpty()) {
-            return "";
+            // Get the history handler from the context
+            R2HistoryCommandHandler historyHandler = null;
+            if (context instanceof r4ghidra.repl.R2REPLImpl) {
+                historyHandler = ((r4ghidra.repl.R2REPLImpl)context).getHistoryHandler();
+            }
+            
+            if (historyHandler != null) {
+                // Display command history when ! is used without arguments
+                return historyHandler.displayCommandHistory(new R2Command("!", "", new ArrayList<>(), null));
+            }
+            return "No command history available.\n";
         }
         
         try {
@@ -169,6 +182,7 @@ public class R2ShellCommandHandler implements R2CommandHandler {
     public String getHelp() {
         StringBuilder help = new StringBuilder();
         help.append("Usage: ![!]cmd\n");
+        help.append(" !              show command history\n");
         help.append(" !cmd           run shell command and redirect output to terminal\n");
         help.append(" !!cmd          run shell command and capture output\n");
         help.append(" .!cmd          run shell command and execute output as r2 commands\n");

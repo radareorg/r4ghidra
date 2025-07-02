@@ -4,6 +4,7 @@ import org.json.JSONObject;
 
 import ghidra.program.model.lang.Language;
 import ghidra.program.model.listing.Program;
+import ghidra.program.model.address.Address;
 import r4ghidra.repl.R2Command;
 import r4ghidra.repl.R2CommandException;
 import r4ghidra.repl.R2CommandHandler;
@@ -11,7 +12,7 @@ import r4ghidra.repl.R2Context;
 
 /**
  * Handler for the 'i' (info) command family
- * 
+ *
  * This command provides information about the program and its architecture.
  */
 public class R2InfoCommandHandler implements R2CommandHandler {
@@ -25,7 +26,7 @@ public class R2InfoCommandHandler implements R2CommandHandler {
 
         // Get the subcommand without suffix
         String subcommand = command.getSubcommandWithoutSuffix();
-        
+
         // Handle different subcommands or default to basic info
         if (subcommand.isEmpty()) {
             return executeBasicInfoCommand(command, context);
@@ -36,7 +37,7 @@ public class R2InfoCommandHandler implements R2CommandHandler {
             }
         }
     }
-    
+
     /**
      * Execute the basic info command to show program information
      */
@@ -45,14 +46,14 @@ public class R2InfoCommandHandler implements R2CommandHandler {
             if (program == null) {
                 throw new R2CommandException("No program is loaded");
             }
-            
+
             Language language = program.getLanguage();
             String processor = language.getProcessor().toString().toLowerCase();
-            
+
             // Determine architecture and bits
             String arch = "x86";
             String bits = "64";
-            
+
             if (processor.equals("aarch64")) {
                 arch = "arm";
                 bits = "64";
@@ -81,7 +82,7 @@ public class R2InfoCommandHandler implements R2CommandHandler {
                 arch = "z80";
                 bits = "8";
             }
-            
+
             // Format output based on suffix
             if (command.hasSuffix('j')) {
                 return formatInfoJson(program, arch, bits, processor);
@@ -89,44 +90,56 @@ public class R2InfoCommandHandler implements R2CommandHandler {
                 return formatInfoText(program, arch, bits, processor);
             }
     }
-    
+
     /**
      * Format program information as text
      */
     private String formatInfoText(Program program, String arch, String bits, String processor) {
-        StringBuilder sb = new StringBuilder();
-        
-        // Output the r2 commands that would set up the environment
-        sb.append("e asm.arch=").append(arch).append("\n");
-        sb.append("e asm.bits=").append(bits).append("\n");
-        sb.append("f base.addr=0x").append(program.getImageBase()).append("\n");
-        
-        // Add additional information as comments
-        sb.append("# cpu ").append(processor).append("\n");
-        sb.append("# md5 ").append(program.getExecutableMD5()).append("\n");
-        sb.append("# exe ").append(program.getExecutablePath()).append("\n");
-        
-        // Add language information
-        sb.append("# language ").append(program.getLanguage().getLanguageID().getIdAsString()).append("\n");
-        sb.append("# compiler ").append(program.getCompiler()).append("\n");
-        
-        // Add program size
-        sb.append("# size ").append(program.getMaxAddress().subtract(program.getMinAddress()) + 1).append("\n");
-        
-        return sb.toString();
+	    StringBuilder sb = new StringBuilder();
+
+	    // Output the r2 commands that would set up the environment
+	    sb.append("e asm.arch=").append(arch).append("\n");
+	    sb.append("e asm.bits=").append(bits).append("\n");
+	    sb.append("f base.addr=0x").append(program.getImageBase()).append("\n");
+	    try {
+		    Address entryPoint = program.getImageBase().add(program.getExecutableFormat() != null ?
+				    program.getProgramHeader().getEntryPointOffset() : 0);
+
+		    sb.append("f entry0=" + entryPoint);
+	    } catch (Exception e) {
+		    // ignored
+	    }
+
+	    // Add additional information as comments
+	    sb.append("# cpu ").append(processor).append("\n");
+	    sb.append("# md5 ").append(program.getExecutableMD5()).append("\n");
+	    sb.append("# exe ").append(program.getExecutablePath()).append("\n");
+
+	    // Add language information
+	    sb.append("# language ").append(program.getLanguage().getLanguageID().getIdAsString()).append("\n");
+	    sb.append("# compiler ").append(program.getCompiler()).append("\n");
+
+	    try {
+		    // Add program size
+		    sb.append("# size ").append(program.getMaxAddress().subtract(program.getMinAddress()) + 1).append("\n");
+	    } catch (Exception e) {
+		    sb.append ("# " + e.toString());
+	    }
+
+	    return sb.toString();
     }
-    
+
     /**
      * Format program information as JSON
      */
     private String formatInfoJson(Program program, String arch, String bits, String processor) {
         JSONObject info = new JSONObject();
-        
+
         // Basic architecture info
         info.put("arch", arch);
         info.put("bits", Integer.parseInt(bits));
         info.put("base", "0x" + Long.toHexString(program.getImageBase().getOffset()));
-        
+
         // CPU and other information
         info.put("cpu", processor);
         info.put("md5", program.getExecutableMD5());
@@ -134,7 +147,7 @@ public class R2InfoCommandHandler implements R2CommandHandler {
         info.put("language", program.getLanguage().getLanguageID().getIdAsString());
         info.put("compiler", program.getCompiler());
         info.put("size", program.getMaxAddress().subtract(program.getMinAddress()) + 1);
-        
+
         return info.toString(2) + "\n";
     }
 
