@@ -63,6 +63,7 @@ public class R2EvalConfig {
         set("scr.prompt", "true", false);
         set("scr.font", "STMono", false);
         set("scr.fontsize", "12", false);
+        set("scr.follow", "false", false);
         
         // Directory settings
         set("dir.tmp", "/tmp", false);

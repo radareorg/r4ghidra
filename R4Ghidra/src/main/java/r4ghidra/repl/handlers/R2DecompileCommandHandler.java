@@ -179,6 +179,7 @@ public class R2DecompileCommandHandler implements R2CommandHandler {
         StringBuilder result = new StringBuilder();
 
         for (DecompiledLine line : lines) {
+            // Only output lines that have an address associated with them
             if (line.hasAddress()) {
                 // Base64 encode for radare2 comments
                 String b64comment = Base64.getEncoder().encodeToString(

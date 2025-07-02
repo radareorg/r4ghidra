@@ -42,6 +42,15 @@ public class R4CommandShellProvider extends ComponentProvider {
     public void close() {
         getTool().removeComponentProvider(this);
     }
+    
+    /**
+     * Get the REPL context for configuration access
+     * 
+     * @return The current R2Context instance
+     */
+    public r4ghidra.repl.R2Context getREPLContext() {
+        return repl != null ? repl.getContext() : null;
+    }
 
     /**
      * Bring the component to the front and ensure it's visible

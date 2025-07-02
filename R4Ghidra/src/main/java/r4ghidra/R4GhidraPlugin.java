@@ -22,6 +22,8 @@ import java.util.List;
 import javax.swing.*;
 import java.awt.BorderLayout;
 import java.awt.Frame;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import javax.swing.SwingUtilities;
 
 import docking.ActionContext;
@@ -34,10 +36,12 @@ import docking.widgets.OptionDialog;
 import ghidra.app.CorePluginPackage;
 import ghidra.app.plugin.PluginCategoryNames;
 import ghidra.app.plugin.ProgramPlugin;
+import ghidra.app.services.GoToService;
 import ghidra.framework.plugintool.*;
 import ghidra.framework.plugintool.util.PluginStatus;
 import ghidra.program.flatapi.FlatProgramAPI;
 import ghidra.program.model.listing.Program;
+import ghidra.program.model.address.Address;
 import ghidra.util.HelpLocation;
 import r4ghidra.repl.R2CommandHandler;
 import r4ghidra.repl.handlers.*;
@@ -96,14 +100,18 @@ public class R4GhidraPlugin extends ProgramPlugin {
 	 * Initialize all command handlers for R4Ghidra
 	 */
 	private void initCommandHandlers() {
-		// Register all command handlers
-		commandHandlers.add(new R2SeekCommandHandler());
-		commandHandlers.add(new R2PrintCommandHandler());
-		commandHandlers.add(new R2BlocksizeCommandHandler());
-		commandHandlers.add(new R2DecompileCommandHandler());
-		commandHandlers.add(new R2EnvCommandHandler());
-		commandHandlers.add(new R2EvalCommandHandler());
-		commandHandlers.add(new R2ShellCommandHandler());
+        // Register all command handlers
+        commandHandlers.add(new R2SeekCommandHandler());
+        commandHandlers.add(new R2PrintCommandHandler());
+        commandHandlers.add(new R2BlocksizeCommandHandler());
+        commandHandlers.add(new R2DecompileCommandHandler());
+        commandHandlers.add(new R2EnvCommandHandler());
+        commandHandlers.add(new R2EvalCommandHandler());
+        commandHandlers.add(new R2ShellCommandHandler());
+        // Analyze commands: af, afl, afi
+        commandHandlers.add(new R2AnalyzeCommandHandler());
+		commandHandlers.add(new R2InfoCommandHandler());
+		commandHandlers.add(new R2CommentCommandHandler());
 		
 		// Note: R2HelpCommandHandler will be created in the CommandShellProvider
 		// because it needs a reference to the command registry
@@ -140,8 +148,7 @@ public class R4GhidraPlugin extends ProgramPlugin {
 		}
 	}
 
-	// If provider is desired, it is recommended to move it to its own file
-       private static class MyProvider extends ComponentProvider {
+	private static class MyProvider extends ComponentProvider {
            // Reference to the owning plugin (cast from PluginTool)
            private final R4GhidraPlugin plugin;
 
@@ -304,15 +311,276 @@ public class R4GhidraPlugin extends ProgramPlugin {
             PluginTool pluginTool = (PluginTool) dockingTool;
             Frame owner = pluginTool.getToolFrame();
             SwingUtilities.invokeLater(() -> {
-                JDialog dialog = new JDialog(owner, "R4Ghidra Settings", true);
-                dialog.getContentPane().setLayout(new BorderLayout());
-                JPanel panel = new JPanel(new BorderLayout());
-                panel.add(new JLabel("Configure R4Ghidra server settings here."), BorderLayout.CENTER);
-                dialog.getContentPane().add(panel);
-                dialog.pack();
-                dialog.setLocationRelativeTo(owner);
-                dialog.setVisible(true);
+                createAndShowSettingsDialog(owner);
             });
         }
+        
+        /**
+         * Creates and displays the settings dialog with server status indicator
+         * and configuration variable grid.
+         */
+        private void createAndShowSettingsDialog(Frame owner) {
+            JDialog dialog = new JDialog(owner, "R4Ghidra Settings", true);
+            dialog.setSize(600, 400);
+            dialog.getContentPane().setLayout(new BorderLayout(10, 10));
+            
+            // Create main panel with some padding
+            JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
+            mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+            
+            // Server status panel at the top
+            JPanel statusPanel = createServerStatusPanel();
+            mainPanel.add(statusPanel, BorderLayout.NORTH);
+            
+            // Config variables panel in the center
+            JPanel configPanel = createConfigVariablesPanel();
+            mainPanel.add(configPanel, BorderLayout.CENTER);
+            
+            // Button panel at the bottom
+            JPanel buttonPanel = new JPanel();
+            JButton closeButton = new JButton("Close");
+            closeButton.addActionListener(e -> dialog.dispose());
+            buttonPanel.add(closeButton);
+            mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+            
+            dialog.getContentPane().add(mainPanel);
+            dialog.setLocationRelativeTo(owner);
+            dialog.setVisible(true);
+        }
+        
+        /**
+         * Creates a panel showing the server status.
+         */
+        private JPanel createServerStatusPanel() {
+            JPanel panel = new JPanel(new BorderLayout(5, 0));
+            panel.setBorder(BorderFactory.createTitledBorder("Server Status"));
+            
+            boolean isRunning = R4GhidraServer.isRunning();
+            String statusText = isRunning ? "RUNNING" : "STOPPED";
+            JLabel statusLabel = new JLabel("Server status: " + statusText);
+            statusLabel.setForeground(isRunning ? new java.awt.Color(0, 128, 0) : java.awt.Color.RED);
+            statusLabel.setFont(statusLabel.getFont().deriveFont(java.awt.Font.BOLD));
+            
+            JPanel statusInfoPanel = new JPanel(new BorderLayout());
+            statusInfoPanel.add(statusLabel, BorderLayout.WEST);
+            
+            if (isRunning) {
+                JButton stopButton = new JButton("Stop Server");
+                stopButton.addActionListener(e -> {
+                    R4GhidraServer.stop();
+                    updateStartStopActions();
+                    // Recreate and show the dialog to refresh
+                    ((JDialog)panel.getTopLevelAncestor()).dispose();
+                    createAndShowSettingsDialog(((PluginTool)dockingTool).getToolFrame());
+                });
+                statusInfoPanel.add(stopButton, BorderLayout.EAST);
+            } else {
+                JButton startButton = new JButton("Start Server");
+                startButton.addActionListener(e -> {
+                    try {
+                        String strPort = OptionDialog.showInputSingleLineDialog(null, "R4Ghidra", "Server port:", "9191");
+                        if (strPort != null && !strPort.isEmpty()) {
+                            Integer intPort = Integer.parseInt(strPort);
+                            R4GhidraServer.start(intPort.intValue());
+                            updateStartStopActions();
+                            // Recreate and show the dialog to refresh
+                            ((JDialog)panel.getTopLevelAncestor()).dispose();
+                            createAndShowSettingsDialog(((PluginTool)dockingTool).getToolFrame());
+                        }
+                    } catch (IOException ioe) {
+                        OkDialog.showError("R4Ghidra Error", ioe.getMessage());
+                    } catch (NumberFormatException nfe) {
+                        OkDialog.showError("R4Ghidra Error", "Invalid port number");
+                    }
+                });
+                statusInfoPanel.add(startButton, BorderLayout.EAST);
+            }
+            
+            panel.add(statusInfoPanel, BorderLayout.CENTER);
+            return panel;
+        }
+        
+        /**
+         * Creates a panel with a grid of configuration variables.
+         */
+        private JPanel createConfigVariablesPanel() {
+            JPanel panel = new JPanel(new BorderLayout());
+            panel.setBorder(BorderFactory.createTitledBorder("Configuration Variables"));
+            
+            // Get the current R2 REPL context to access configuration variables
+            r4ghidra.repl.R2Context r2Context = null;
+            if (plugin.shellProvider != null) {
+                r2Context = plugin.shellProvider.getREPLContext();
+            }
+            
+            if (r2Context == null) {
+                // No context available yet, show a message
+                panel.add(new JLabel("Open the Command Shell first to view configuration variables."), BorderLayout.CENTER);
+                return panel;
+            }
+            
+            // Get configuration variables from the context
+            r4ghidra.repl.config.R2EvalConfig evalConfig = r2Context.getEvalConfig();
+            java.util.Map<String, String> configVars = evalConfig.getAll();
+            
+            // Create table model for the grid
+            ConfigVariableTableModel tableModel = new ConfigVariableTableModel(configVars, evalConfig);
+            
+            // Create the table with the model
+            JTable configTable = new JTable(tableModel);
+            configTable.setRowHeight(25);
+            configTable.getColumnModel().getColumn(0).setPreferredWidth(150);
+            configTable.getColumnModel().getColumn(1).setPreferredWidth(250);
+            
+            // Set custom cell editor for the value column
+            configTable.getColumnModel().getColumn(1).setCellEditor(new ConfigValueCellEditor());
+            
+            // Add the table to a scroll pane
+            JScrollPane scrollPane = new JScrollPane(configTable);
+            panel.add(scrollPane, BorderLayout.CENTER);
+            
+            return panel;
+        }
+        
+        /**
+         * Table model for configuration variables.
+         */
+        private class ConfigVariableTableModel extends javax.swing.table.AbstractTableModel {
+            private java.util.List<String> keys = new java.util.ArrayList<>();
+            private java.util.List<String> values = new java.util.ArrayList<>();
+            private r4ghidra.repl.config.R2EvalConfig evalConfig;
+            
+            public ConfigVariableTableModel(java.util.Map<String, String> configVars, r4ghidra.repl.config.R2EvalConfig evalConfig) {
+                this.evalConfig = evalConfig;
+                
+                // Convert the map to sorted lists for table display
+                java.util.List<String> sortedKeys = new java.util.ArrayList<>(configVars.keySet());
+                java.util.Collections.sort(sortedKeys);
+                
+                for (String key : sortedKeys) {
+                    keys.add(key);
+                    values.add(configVars.get(key));
+                }
+            }
+            
+            @Override
+            public int getRowCount() {
+                return keys.size();
+            }
+            
+            @Override
+            public int getColumnCount() {
+                return 2;
+            }
+            
+            @Override
+            public String getColumnName(int column) {
+                return column == 0 ? "Name" : "Value";
+            }
+            
+            @Override
+            public Object getValueAt(int rowIndex, int columnIndex) {
+                if (columnIndex == 0) {
+                    return keys.get(rowIndex);
+                } else {
+                    return values.get(rowIndex);
+                }
+            }
+            
+            @Override
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                // Only the value column is editable
+                return columnIndex == 1;
+            }
+            
+            @Override
+            public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
+                if (columnIndex == 1 && aValue != null) {
+                    String key = keys.get(rowIndex);
+                    String newValue = aValue.toString();
+                    
+                    // Update the value in the config
+                    evalConfig.set(key, newValue);
+                    
+                    // Update the local cache
+                    values.set(rowIndex, newValue);
+                    
+                    // Notify listeners that the value has changed
+                    fireTableCellUpdated(rowIndex, columnIndex);
+                }
+            }
+        }
+        
+        /**
+         * Custom cell editor for configuration variable values.
+         */
+        private class ConfigValueCellEditor extends javax.swing.DefaultCellEditor {
+            public ConfigValueCellEditor() {
+                super(new JTextField());
+            }
+            
+            @Override
+            public java.awt.Component getTableCellEditorComponent(JTable table, Object value,
+                                                        boolean isSelected, int row, int column) {
+                // Get the key name to determine the type of editor to use
+                String key = (String) table.getValueAt(row, 0);
+                String strValue = value != null ? value.toString() : "";
+                
+                if (isBooleanKey(key)) {
+                    // For boolean values, use a combo box
+                    JComboBox<String> comboBox = new JComboBox<>(new String[] {"true", "false"});
+                    comboBox.setSelectedItem(strValue);
+                    return comboBox;
+                } else if (isNumericKey(key)) {
+                    // For numeric values, use a text field with input verification
+                    JTextField textField = (JTextField) super.getTableCellEditorComponent(
+                            table, value, isSelected, row, column);
+                    textField.setInputVerifier(new javax.swing.InputVerifier() {
+                        @Override
+                        public boolean verify(javax.swing.JComponent input) {
+                            try {
+                                String text = ((JTextField) input).getText();
+                                Integer.parseInt(text);
+                                return true;
+                            } catch (NumberFormatException e) {
+                                return false;
+                            }
+                        }
+                    });
+                    return textField;
+                } else {
+                    // For string values, use a regular text field
+                    return super.getTableCellEditorComponent(table, value, isSelected, row, column);
+                }
+            }
+            
+            @Override
+            public Object getCellEditorValue() {
+                java.awt.Component editor = getComponent();
+                if (editor instanceof JComboBox) {
+                    return ((JComboBox<?>) editor).getSelectedItem();
+                } else {
+                    return super.getCellEditorValue();
+                }
+            }
+            
+            private boolean isBooleanKey(String key) {
+                // Determine if a key represents a boolean value
+                return key.equals("scr.prompt") || key.equals("cfg.bigendian") || 
+                       key.equals("io.cache") || key.equals("cfg.sandbox") ||
+                       key.equals("scr.follow") ||
+                       key.toLowerCase().contains(".enable") || key.toLowerCase().contains(".enabled") ||
+                       key.toLowerCase().endsWith(".on") || key.toLowerCase().endsWith(".off");
+            }
+            
+            private boolean isNumericKey(String key) {
+                // Determine if a key represents a numeric value
+                return key.equals("scr.fontsize") || key.equals("asm.bits") || 
+                       key.equals("asm.bytes") || key.equals("http.port") ||
+                       key.toLowerCase().endsWith(".size") || key.toLowerCase().contains(".width") ||
+                       key.toLowerCase().contains(".height") || key.toLowerCase().contains(".count");
+            }
+        }
+        
 	}
 }
