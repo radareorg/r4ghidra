@@ -66,6 +66,7 @@ dependencies {
 	// Any external dependencies added here will automatically be copied to the lib/ directory when
 	// this extension is built.	
 	implementation 'org.json:json:20240205'
+	implementation 'org.openjdk.nashorn:nashorn-core:15.4'
 }
 
 // Configuration for Spotless code formatting

@@ -2,6 +2,7 @@ package r4ghidra.repl.handlers;
 
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.CodeUnit;
+import ghidra.program.model.listing.CommentType;
 import ghidra.program.model.listing.Listing;
 import ghidra.program.model.listing.Program;
 import java.util.Base64;
@@ -86,8 +87,8 @@ private String executeCCuCommand(R2Command command, R2Context context) throws R2
 	try {
 		// Set the EOL (End of Line) comment at the specified address
 		// Unique comment means removing any existing comments first
-		listing.setComment(address, CodeUnit.EOL_COMMENT, null); // Clear existing comment
-		listing.setComment(address, CodeUnit.EOL_COMMENT, comment);
+		listing.setComment(address, CommentType.EOL, null); // Clear existing comment
+		listing.setComment(address, CommentType.EOL, comment);
 
 		return "Comment set at " + context.formatAddress(address);
 	} finally {
