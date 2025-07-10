@@ -9,6 +9,9 @@ oops:
 	analyzeHeadless . Test.gpr -import $(TESTBIN) -postScript $(SCRIPT) $(FCNADDR) -deleteProject
 	r2 -caf -i ghidra-output.r2 $(TESTBIN)
 
+clean mrproper:
+	$(MAKE) -C R4Ghidra $@
+
 R2PM_BINDIR=$(shell r2pm -H R2PM_BINDIR)
 
 install:

@@ -8,7 +8,7 @@ GHIDRA_PATH=$(HOME)/Downloads
 endif
 endif
 
-GHIDRA_INSTALL_DIR?=$(GHIDRA_PATH)/$(shell ls -rt $(GHIDRA_PATH) | grep ^ghidra_ | tail -n 1)
+GHIDRA_INSTALL_DIR?=$(GHIDRA_PATH)/$(shell ls -rt $(GHIDRA_PATH) 2>/dev/null | grep ^ghidra_ | tail -n 1)
 
 ifeq ($(GHIDRA_INSTALL_DIR),)
 all:
