@@ -6,10 +6,12 @@ import ghidra.app.decompiler.DecompileResults;
 import ghidra.app.decompiler.PrettyPrinter;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.CodeUnit;
+// import ghidra.program.model.listing.CommentType; // Replaced with CommentTypeAdapter
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.Listing;
 import ghidra.program.model.symbol.IdentityNameTransformer;
+import r4ghidra.repl.handlers.CommentTypeAdapter;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
 import ghidra.program.model.symbol.SymbolType;
@@ -222,7 +224,7 @@ private String executePdCommand(R2Command command, R2Context context) throws R2C
 		disasmInstr.disasm = disasm;
 		disasmInstr.label = label;
 		// Capture end-of-line comment if present
-		disasmInstr.comment = instr.getComment(CodeUnit.EOL_COMMENT);
+		disasmInstr.comment = instr.getComment(CommentTypeAdapter.EOL);
 
 		instructions.add(disasmInstr);
 
@@ -500,7 +502,7 @@ private String executePdfCommand(R2Command command, R2Context context) throws R2
 		disasmInstr.disasm = disasm;
 		disasmInstr.label = label;
 		// Capture end-of-line comment if present
-		disasmInstr.comment = instr.getComment(CodeUnit.EOL_COMMENT);
+		disasmInstr.comment = instr.getComment(CommentTypeAdapter.EOL);
 
 		instructions.add(disasmInstr);
 

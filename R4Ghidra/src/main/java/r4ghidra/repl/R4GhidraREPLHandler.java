@@ -10,6 +10,7 @@ import r4ghidra.repl.handlers.R2BlocksizeCommandHandler;
 import r4ghidra.repl.handlers.R2EnvCommandHandler;
 import r4ghidra.repl.handlers.R2EvalCommandHandler;
 import r4ghidra.repl.handlers.R2HelpCommandHandler;
+import r4ghidra.repl.handlers.R2JsCommandHandler;
 import r4ghidra.repl.handlers.R2PrintCommandHandler;
 import r4ghidra.repl.handlers.R2SeekCommandHandler;
 import r4ghidra.repl.handlers.R2ShellCommandHandler;
@@ -66,6 +67,11 @@ private void registerCommandHandlers() {
 	commandRegistry.put("b", blocksizeHandler);
 	repl.registerCommand("b", blocksizeHandler);
 
+	// JavaScript command
+	R2JsCommandHandler jsHandler = new R2JsCommandHandler();
+	commandRegistry.put("js", jsHandler);
+	repl.registerCommand("js", jsHandler);
+	
 	// Add more command handlers here as they're implemented
 	// ...
 }
