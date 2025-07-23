@@ -23,7 +23,7 @@ The extension .zip will be created in `dist/` directory. You can also download p
 
 - Java21
 - GHIDRA
-- Gradle
+- Gradle 8.x
 
 ### Ubuntu
 
@@ -33,6 +33,16 @@ sudo snap install ghidra --edge
 sudo snap install gradle --edge --classic
 make
 ```
+
+### IDEA
+
+A Run Configuration is provided for IntelliJ IDEA. To make it work you should: 
+
+* Run IDEA with the `GHIDRA_INSTALL_DIR` environment variable set to your Ghidra release (not source!) directory.
+* Set the location of your Ghidra installation by adding the `GHIDRA_INSTALL_DIR` Path Variable under `File->Settings->Path Variables`.
+
+If everything is set up correctly IDEA should recognize the Gradle project and load external dependencies referenced by the Run Configuration from the referenced Ghidra directory. If everything is right you should see that `Use classpath of module` is set to `-cp R4Ghidra.main` in the Run Configuration GUI, and no errors are shown. You'll get a `ClassNotFoundException` when trying to use the Run Configuration if external dependencies were not discovered as expected. 
+
 
 ## Installation
 
