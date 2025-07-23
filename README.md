@@ -23,7 +23,7 @@ The extension .zip will be created in `dist/` directory. You can also download p
 
 - Java21
 - GHIDRA
-- Gradle
+- Gradle 8.x
 
 ### Ubuntu
 
@@ -33,6 +33,10 @@ sudo snap install ghidra --edge
 sudo snap install gradle --edge --classic
 make
 ```
+
+### IDEA
+
+A Run Configuration is provided for IntelliJ IDEA. To make it work you should set the location of your Ghidra installation by adding the `GHIDRA_INSTALL_DIR` Path Variable under `File->Settings->Path Variables`.
 
 ## Installation
 
