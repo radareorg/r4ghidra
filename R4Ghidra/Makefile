@@ -1,14 +1,15 @@
-ifeq ($(shell test -d /snap/ghidra/current),)
+ifneq ($(shell test -d /snap/ghidra/current && echo snap),)
 GHIDRA_PATH=/snap/ghidra/current
 else
-ifeq ($(shell test -f /var/lib/flatpak/app/org.ghidra_sre.Ghidra/current/active/files/lib/ghidra),)
+ifneq ($(shell test -f /var/lib/flatpak/app/org.ghidra_sre.Ghidra/current/active/files/lib/ghidra && flatpak),)
 GHIDRA_PATH=/var/lib/flatpak/app/org.ghidra_sre.Ghidra/current/active/files/lib/ghidra
 else
 GHIDRA_PATH=$(HOME)/Downloads
 endif
 endif
 
-GHIDRA_INSTALL_DIR?=$(GHIDRA_PATH)/$(shell ls -rt $(GHIDRA_PATH) 2>/dev/null | grep ^ghidra_ | tail -n 1)
+GHIDRA_HOME=$(shell cd $(GHIDRA_PATH) ; ls -rt 2> /dev/null | grep ^ghidra_ |grep -v zip | tail -n 1)
+GHIDRA_INSTALL_DIR?=$(HOME)/Downloads/$(GHIDRA_HOME)
 
 ifeq ($(GHIDRA_INSTALL_DIR),)
 all:
@@ -19,6 +20,10 @@ GHIDRA_INSTALL_DIR?=$(HOME)/Downloads/$(GHIDRA_HOME)
 all:
 	GHIDRA_INSTALL_DIR="$(GHIDRA_INSTALL_DIR)" gradle buildExtension
 endif
+
+install:
+	rm -f "$(GHIDRA_INSTALL_DIR)/Extensions/Ghidra/ghidra"_*R4G*
+	cp $(ls -rt dist |grep zip | tail -n1) $(GHIDRA_INSTALL_DIR)/Extensions/Ghidra
 
 # XXX not working
 headless:
