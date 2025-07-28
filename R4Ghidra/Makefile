@@ -21,9 +21,11 @@ all:
 	GHIDRA_INSTALL_DIR="$(GHIDRA_INSTALL_DIR)" gradle buildExtension
 endif
 
-install:
+install: uninstall
+	cp -f dist/"$(shell ls -rt dist |grep zip | tail -n1)" $(GHIDRA_INSTALL_DIR)/Extensions/Ghidra
+
+uninstall:
 	rm -f "$(GHIDRA_INSTALL_DIR)/Extensions/Ghidra/ghidra"_*R4G*
-	cp $(ls -rt dist |grep zip | tail -n1) $(GHIDRA_INSTALL_DIR)/Extensions/Ghidra
 
 # XXX not working
 headless:
