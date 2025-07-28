@@ -13,7 +13,7 @@ import org.json.JSONObject;
  *
  * <p>This class handles the various ~ filter modifiers for radare2 commands: - ~pattern - Grep
  * filter, only shows lines matching the pattern - ~pattern1,pattern2 - Grep filter with multiple
- * patterns (OR logic) - ~&pattern1,pattern2 - Grep filter with multiple patterns (AND logic) - ~{}
+ * patterns (OR logic) - ~&amp;pattern1,pattern2 - Grep filter with multiple patterns (AND logic) - ~{}
  * - Pretty-prints JSON output - ~? - Counts lines in output (like wc -l)
  */
 public class R2OutputFilter {

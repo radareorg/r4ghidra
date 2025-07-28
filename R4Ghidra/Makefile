@@ -21,6 +21,9 @@ all:
 	GHIDRA_INSTALL_DIR="$(GHIDRA_INSTALL_DIR)" gradle buildExtension
 endif
 
+javadoc doc:
+	GHIDRA_INSTALL_DIR="$(GHIDRA_INSTALL_DIR)" gradle javadoc
+
 install: uninstall
 	cp -f dist/"$(shell ls -rt dist |grep zip | tail -n1)" $(GHIDRA_INSTALL_DIR)/Extensions/Ghidra
 
