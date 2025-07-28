@@ -31,6 +31,8 @@ uninstall:
 headless:
 	$(GHIDRA_PATH)/support/analyzeHeadless /tmp/ test -process /bin/ls -postScript ghidra_scripts/r4ghidra_headless.py 
 
+run:
+	$(GHIDRA_INSTALL_DIR)/ghidraRun
 
 clean:
 	rm -rf .gradle dist build
