@@ -14,8 +14,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-//Script to tap into Ghidra and control its commands through radare2 webserver.
-//@category Functions
+// Script to tap into Ghidra and control its commands through radare2 webserver.
+// @category Functions
 //
 // Starts an http server to let r2 talk with us
 // @author pancake <pancake@nopcode.org>
@@ -89,8 +89,9 @@ public class R4GhidraServer extends GhidraScript {
       while (true) {
         for (CodeBlock block : blocks) {
           long addr = block.getMinAddress().getUnsignedOffset();
-          long last = block.getMaxAddress().getUnsignedOffset(); // XXX this is the end of the function :(
-	  // i cant find a way to get the basicblock size
+          long last =
+              block.getMaxAddress().getUnsignedOffset(); // XXX this is the end of the function :(
+          // i cant find a way to get the basicblock size
           fcnbbs.add(block.getMinAddress());
           String jumpfail = "";
           CodeBlockReferenceIterator dst = block.getDestinations(TaskMonitor.DUMMY);
@@ -168,15 +169,16 @@ public class R4GhidraServer extends GhidraScript {
     private String cmdPdd(String arg) {
       char rad = (arg.indexOf("*") != -1) ? '*' : ' ';
       Integer len = 0;
-      try{
+      try {
         len = Integer.parseInt(arg.split(" ")[1]);
-      }catch(Exception e){ } // TODO remove Pokemon handler
-        
+      } catch (Exception e) {
+      } // TODO remove Pokemon handler
+
       // Function f = ghidra.getFunctionAt(ghidra.currentAddress);
-      try{
+      try {
         Function f = ghidra.getFunctionContaining(ghidra.currentAddress);
         return ghidra.decompile(f, rad);
-      }catch(MemoryAccessException mae){
+      } catch (MemoryAccessException mae) {
         return "FF".repeat(len);
       } catch (Exception e) {
         return e.toString() + "\n";
@@ -230,16 +232,16 @@ public class R4GhidraServer extends GhidraScript {
       ghidra.println("ORIGINAL COMMAND: " + cmd);
       int tmpAddr = cmd.indexOf('@');
       if (tmpAddr != -1) {
-          Address origAddress = ghidra.currentAddress;
-          long dec = Long.decode(cmd.substring(tmpAddr + 1));
-          String addr = "0x" + Long.toHexString(dec);
-          ghidra.currentAddress = ghidra.parseAddress(addr);
-          ghidra.goTo(ghidra.currentAddress);
-          cmd = cmd.substring(0, tmpAddr);
-          ghidra.println("ADDRESS: " + addr +" = "+ ghidra.currentAddress.toString());
+        Address origAddress = ghidra.currentAddress;
+        long dec = Long.decode(cmd.substring(tmpAddr + 1));
+        String addr = "0x" + Long.toHexString(dec);
+        ghidra.currentAddress = ghidra.parseAddress(addr);
+        ghidra.goTo(ghidra.currentAddress);
+        cmd = cmd.substring(0, tmpAddr);
+        ghidra.println("ADDRESS: " + addr + " = " + ghidra.currentAddress.toString());
       }
       ghidra.println("COMMAND: " + cmd);
-      
+
       if (cmd.length() == 0) {
         return "Unknown ghidra-r2web-server command.";
       }
@@ -402,9 +404,9 @@ public class R4GhidraServer extends GhidraScript {
           return "Usage: CC [comment] @ addr";
         case 's': // "s"
           if (cmd.length() > 1 && cmd.charAt(1) == ' ') {
-            Address seekAddr= ghidra.parseAddress(cmd.substring(2));
+            Address seekAddr = ghidra.parseAddress(cmd.substring(2));
             ghidra.goTo(seekAddr); // goTo doesn't update currentAddress!
-            ghidra.currentAddress=seekAddr;
+            ghidra.currentAddress = seekAddr;
           }
           return hexAddress(ghidra.currentAddress) + "\n";
         case 'p':
@@ -416,7 +418,7 @@ public class R4GhidraServer extends GhidraScript {
                 return cmdPrint8(cmd.substring(2).trim());
               case 'd': // "pdd" and "pdd*"
                 return cmdPdd(cmd.substring(2).trim());
-                // TODO
+              // TODO
               default:
                 return "Usage: p[x8d]";
             }
@@ -524,7 +526,9 @@ public class R4GhidraServer extends GhidraScript {
             "Do you want to stop the ghidra-r2web-server webserver?",
             "$ r2 r2web://localhost:"
                 + port
-                + "/cmd/\nPress yes to stop the server.\nPress 'no' to continue in background (EXPERIMENTAL)");
+                + "/cmd/\n"
+                + "Press yes to stop the server.\n"
+                + "Press 'no' to continue in background (EXPERIMENTAL)");
     if (res) {
       // to run in background just comment this line,
       // but if the script is changed we cant shut it

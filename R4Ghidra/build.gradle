@@ -73,7 +73,7 @@ dependencies {
 spotless {
 	java {
 		// Use Google's Java formatter
-		googleJavaFormat()
+		googleJavaFormat("1.7")
 		// Format all Java files in the project
 		target 'src/main/java/**/*.java'
 		// Use tabs for indentation

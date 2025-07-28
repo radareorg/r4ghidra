@@ -19,15 +19,15 @@ install:
 	mkdir -p ~/ghidra_scripts
 	ln -fs $(shell pwd)/$(SCRIPT) ~/ghidra_scripts/$(SCRIPT)
 
-#ln -fs $(shell pwd)/R2GhidraServerSingleton.java ~/ghidra_scripts/R2GhidraServerSingleton.java
-
 uninstall:
 	rm -f $(R2PM_BINDIR)/r2g
 
-GJF=google-java-format-1.7-all-deps.jar
+GJF_VERSION=1.28.0
+GJF=google-java-format-$(GJF_VERSION)-all-deps.jar
 
-$(GJF):
-	wget https://github.com/google/google-java-format/releases/download/google-java-format-1.7/google-java-format-1.7-all-deps.jar
+gjf $(GJF):
+	wget https://github.com/google/google-java-format/releases/download/v$(GJF_VERSION)/$(GJF)
 
 indent: $(GJF)
-	java -jar $(GJF) -i *.java */*.java
+	java -jar $(GJF) -i *.java */*.java \
+		R4Ghidra/src/main/java/**/*.java

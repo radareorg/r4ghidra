@@ -8,20 +8,20 @@ package r4ghidra.repl;
  */
 public interface R2CommandHandler {
 
-/**
-* Execute a command
-*
-* @param command The parsed command object
-* @param context The execution context
-* @return The result of the command execution
-* @throws R2CommandException If there's an error during command execution
-*/
-String execute(R2Command command, R2Context context) throws R2CommandException;
+  /**
+   * Execute a command
+   *
+   * @param command The parsed command object
+   * @param context The execution context
+   * @return The result of the command execution
+   * @throws R2CommandException If there's an error during command execution
+   */
+  String execute(R2Command command, R2Context context) throws R2CommandException;
 
-/**
-* Get help information for this command
-*
-* @return A string containing help information for this command
-*/
-String getHelp();
+  /**
+   * Get help information for this command
+   *
+   * @return A string containing help information for this command
+   */
+  String getHelp();
 }
