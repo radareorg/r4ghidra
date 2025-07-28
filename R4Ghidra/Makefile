@@ -26,6 +26,7 @@ install: uninstall
 
 uninstall:
 	rm -f "$(GHIDRA_INSTALL_DIR)/Extensions/Ghidra/ghidra"_*R4G*
+	rm -rf $(HOME)/.config/ghidra/ghidra_*/Extensions/R4Ghidra
 
 # XXX not working
 headless:
