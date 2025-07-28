@@ -5,13 +5,11 @@ import ghidra.app.decompiler.DecompInterface;
 import ghidra.app.decompiler.DecompileResults;
 import ghidra.app.decompiler.PrettyPrinter;
 import ghidra.program.model.address.Address;
-import ghidra.program.model.listing.CodeUnit;
 // import ghidra.program.model.listing.CommentType; // Replaced with CommentTypeAdapter
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.listing.Listing;
 import ghidra.program.model.symbol.IdentityNameTransformer;
-import r4ghidra.repl.handlers.CommentTypeAdapter;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolTable;
 import ghidra.program.model.symbol.SymbolType;

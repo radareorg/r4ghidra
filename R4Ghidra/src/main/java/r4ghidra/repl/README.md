@@ -42,7 +42,7 @@ The R2REPL architecture consists of:
 
 To integrate this new REPL system with the existing R4Ghidra plugin:
 
-1. Replace the current `R4GhidraCmdHandler` with the new `R4GhidraREPLHandler` in the server setup:
+1. Uses the new `R4GhidraREPLHandler` in the server setup:
 
 ```java
 // In R4GhidraServer or wherever the HTTP server is initialized

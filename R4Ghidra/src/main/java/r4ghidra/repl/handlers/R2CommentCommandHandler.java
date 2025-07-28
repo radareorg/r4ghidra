@@ -1,9 +1,7 @@
 package r4ghidra.repl.handlers;
 
 import ghidra.program.model.address.Address;
-import ghidra.program.model.listing.CodeUnit;
 // import ghidra.program.model.listing.CommentType; // Replaced with CommentTypeAdapter
-import r4ghidra.repl.handlers.CommentTypeAdapter;
 import ghidra.program.model.listing.Listing;
 import ghidra.program.model.listing.Program;
 import java.util.Base64;

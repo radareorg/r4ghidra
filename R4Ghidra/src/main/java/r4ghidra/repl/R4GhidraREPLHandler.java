@@ -71,7 +71,7 @@ private void registerCommandHandlers() {
 	R2JsCommandHandler jsHandler = new R2JsCommandHandler();
 	commandRegistry.put("js", jsHandler);
 	repl.registerCommand("js", jsHandler);
-	
+
 	// Add more command handlers here as they're implemented
 	// ...
 }

@@ -218,7 +218,7 @@ private String executeDotCommand(String dotCmdStr) throws R2CommandException {
 	// Check if we're loading a script file (when command starts with a space)
 	if (cmdStr.startsWith(" ")) {
 	String filePath = cmdStr.trim();
-	
+
 	// Check if it's a JavaScript file (.r2.js extension)
 	if (filePath.toLowerCase().endsWith(".r2.js")) {
 		return executeJavaScriptFile(filePath);
@@ -252,19 +252,19 @@ private String executeJavaScriptFile(String filePath) throws R2CommandException 
 
 	// Read the JavaScript file
 	String scriptContent = new String(java.nio.file.Files.readAllBytes(path));
-	
+
 	// Find or create a JavaScript command handler
 	R2CommandHandler jsHandler = commandRegistry.get("js");
 	if (jsHandler == null) {
 		jsHandler = new R2JsCommandHandler();
 	}
-	
+
 	// Create a command for the js handler
 	R2Command jsCommand = new R2Command("js", scriptContent, new ArrayList<>(), null);
-	
+
 	// Execute the JavaScript file
 	return jsHandler.execute(jsCommand, context);
-	
+
 	} catch (java.io.IOException e) {
 	throw new R2CommandException("Error reading JavaScript file: " + e.getMessage());
 	}
