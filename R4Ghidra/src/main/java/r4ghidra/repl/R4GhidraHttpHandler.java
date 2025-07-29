@@ -14,66 +14,20 @@ import r4ghidra.repl.handlers.R2JsCommandHandler;
 import r4ghidra.repl.handlers.R2PrintCommandHandler;
 import r4ghidra.repl.handlers.R2SeekCommandHandler;
 import r4ghidra.repl.handlers.R2ShellCommandHandler;
+import r4ghidra.R4GhidraPlugin;
 
 /** HTTP handler that processes radare2 commands using the new REPL implementation */
-public class R4GhidraREPLHandler implements HttpHandler {
+public class R4GhidraHttpHandler implements HttpHandler {
 
   private R2REPLImpl repl;
   private Map<String, R2CommandHandler> commandRegistry;
 
   /** Create a new handler */
-  public R4GhidraREPLHandler() {
-    repl = new R2REPLImpl();
+  public R4GhidraHttpHandler(R4GhidraPlugin plugin) {
     commandRegistry = new HashMap<>();
 
-    // Register command handlers
-    registerCommandHandlers();
-  }
-
-  /** Register all available command handlers */
-  private void registerCommandHandlers() {
-    // Register the 'help' command first since it needs access to the command registry
-    R2HelpCommandHandler helpHandler = new R2HelpCommandHandler(commandRegistry);
-    commandRegistry.put("?", helpHandler);
-    repl.registerCommand("?", helpHandler);
-
-    // Basic commands
-    R2SeekCommandHandler seekHandler = new R2SeekCommandHandler();
-    commandRegistry.put("s", seekHandler);
-    repl.registerCommand("s", seekHandler);
-
-    // Print commands
-    R2PrintCommandHandler printHandler = new R2PrintCommandHandler();
-    commandRegistry.put("p", printHandler);
-    repl.registerCommand("p", printHandler);
-
-    // Shell commands
-    R2ShellCommandHandler shellHandler = new R2ShellCommandHandler();
-    commandRegistry.put("!", shellHandler);
-    repl.registerCommand("!", shellHandler);
-
-    // Environment variable commands
-    R2EnvCommandHandler envHandler = new R2EnvCommandHandler();
-    commandRegistry.put("%", envHandler);
-    repl.registerCommand("%", envHandler);
-
-    // Eval configuration commands
-    R2EvalCommandHandler evalHandler = new R2EvalCommandHandler();
-    commandRegistry.put("e", evalHandler);
-    repl.registerCommand("e", evalHandler);
-
-    // Blocksize commands
-    R2BlocksizeCommandHandler blocksizeHandler = new R2BlocksizeCommandHandler();
-    commandRegistry.put("b", blocksizeHandler);
-    repl.registerCommand("b", blocksizeHandler);
-
-    // JavaScript command
-    R2JsCommandHandler jsHandler = new R2JsCommandHandler();
-    commandRegistry.put("js", jsHandler);
-    repl.registerCommand("js", jsHandler);
-
-    // Add more command handlers here as they're implemented
-    // ...
+    repl = new R2REPLImpl();
+    repl.registerCommands (plugin.getCommandHandlers());
   }
 
   @Override

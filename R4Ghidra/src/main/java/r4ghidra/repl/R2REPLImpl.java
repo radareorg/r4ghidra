@@ -2,6 +2,8 @@ package r4ghidra.repl;
 
 import ghidra.program.model.address.Address;
 import java.util.ArrayList;
+import r4ghidra.repl.R2CommandHandler;
+import r4ghidra.repl.handlers.R2HelpCommandHandler;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +50,55 @@ public class R2REPLImpl {
     // Simply register the command handler
     commandRegistry.put(prefix, handler);
   }
+
+public void registerCommands(List<R2CommandHandler> commands) {
+    // Register all command handlers from the plugin
+    Map<String, R2CommandHandler> commandRegistry = new HashMap<>();
+    for (R2CommandHandler handler : commands) {
+      // For the special case of R2HelpCommandHandler, we need to register it with the
+      // commandRegistry
+      if (handler instanceof r4ghidra.repl.handlers.R2HelpCommandHandler) {
+        // We'll add it at the end after populating the registry
+      } else {
+        // Get the prefix from the command's first character in its help text
+        String help = handler.getHelp();
+        if (help != null && !help.isEmpty()) {
+          // Extract the command prefix from the first line (usually "Usage: prefix...")
+          String firstLine = help.split("\\n")[0];
+          String prefix = "";
+          if (firstLine.contains("Usage:")) {
+            String[] parts = firstLine.split("\\s+");
+            for (String part : parts) {
+              if (part.length() > 0 && !part.equals("Usage:")) {
+                // Get the first character of the command as the prefix
+                prefix = part.substring(0, 1);
+                break;
+              }
+            }
+          }
+
+          if (!prefix.isEmpty()) {
+            // Special case for 'x' command alias
+            // If the help text contains "x[j]" pattern, it's our x alias
+            if (help.contains("x[j]")) {
+              commandRegistry.put("x", handler);
+            } else {
+              commandRegistry.put(prefix, handler);
+            }
+          }
+        }
+      }
+
+      // Now add the help command handler with the registry
+      R2CommandHandler helpHandler = new R2HelpCommandHandler(commandRegistry);
+      commandRegistry.put("?", helpHandler);
+
+      // Register all commands with the REPL
+      for (Map.Entry<String, R2CommandHandler> entry : commandRegistry.entrySet()) {
+        this.registerCommand(entry.getKey(), entry.getValue());
+      }
+    }
+}
 
   /**
    * Parse and execute a command string

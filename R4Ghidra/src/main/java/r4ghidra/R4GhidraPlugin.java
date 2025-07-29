@@ -55,7 +55,7 @@ import r4ghidra.repl.handlers.R2QuitCommandHandler;
     description = "R4Ghidra provides integration between Ghidra and Radare2.")
 // @formatter:on
 public class R4GhidraPlugin extends ProgramPlugin {
-
+  static R4GhidraPlugin self;
   MyProvider provider;
   R4CommandShellProvider shellProvider;
   private List<R2CommandHandler> commandHandlers;
@@ -68,6 +68,7 @@ public class R4GhidraPlugin extends ProgramPlugin {
    */
   public R4GhidraPlugin(PluginTool tool) {
     super(tool);
+    self = this;
 
     // Customize provider (or remove if a provider is not desired)
     String pluginName = getName();
@@ -274,7 +275,7 @@ public class R4GhidraPlugin extends ProgramPlugin {
                     OptionDialog.showInputSingleLineDialog(
                         null, "R4Ghidra", "Server port:", "9191");
                 Integer intPort = Integer.parseInt(strPort);
-                R4GhidraServer.start(intPort.intValue());
+                R4GhidraServer.start(self, intPort.intValue());
                 OkDialog.showInfo(
                     "R4Ghidra",
                     "R4Ghidra server started on port "
@@ -453,7 +454,7 @@ public class R4GhidraPlugin extends ProgramPlugin {
                         null, "R4Ghidra", "Server port:", "9191");
                 if (strPort != null && !strPort.isEmpty()) {
                   Integer intPort = Integer.parseInt(strPort);
-                  R4GhidraServer.start(intPort.intValue());
+                  R4GhidraServer.start(self, intPort.intValue());
                   updateStartStopActions();
                   // Recreate and show the dialog to refresh
                   ((JDialog) panel.getTopLevelAncestor()).dispose();

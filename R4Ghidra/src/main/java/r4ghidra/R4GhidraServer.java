@@ -6,7 +6,7 @@ import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import r4ghidra.repl.R4GhidraREPLHandler;
+import r4ghidra.repl.R4GhidraHttpHandler;
 
 public class R4GhidraServer {
   static HttpServer server;
@@ -31,12 +31,11 @@ public class R4GhidraServer {
     }
   }
 
-  public static void start(int port) throws IOException {
+  public static void start(R4GhidraPlugin plugin, int port) throws IOException {
     stop();
     server = HttpServer.create(new InetSocketAddress(port), 0);
     server.createContext("/", new MyRootHandler());
-    // server.createContext("/cmd", new R4GhidraCmdHandler()); // old
-    server.createContext("/cmd", new R4GhidraREPLHandler());
+    server.createContext("/cmd", new R4GhidraHttpHandler(plugin));
     server.setExecutor(null); // creates a default executor
     server.start();
   }
