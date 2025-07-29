@@ -1,6 +1,6 @@
 <img width="128px" height="128px" align="left" style="float: left; margin: 0 10px 0 0;" alt="r2ghidra logo" src="https://raw.githubusercontent.com/radareorg/r4ghidra/master/doc/images/r4ghidra-logo2.png?nocache">
 
-<h1>Radare For Ghidra</h1>
+### Radare For Ghidra
 
 [![Build Extension](https://github.com/radareorg/r4ghidra/actions/workflows/gradle.yml/badge.svg)](https://github.com/radareorg/r4ghidra/actions/workflows/gradle.yml)
 
@@ -10,6 +10,7 @@ R4Ghidra supports not just the most common radare2 commands, but also all the ha
 
 Please use the [Issue tracker](https://github.com/radareorg/ghidra-r2web/issues) for feedback and bug reports!
 
+#![r4ghidra](doc/images/r4ghidra.jpg)
 
 ## Build
 
