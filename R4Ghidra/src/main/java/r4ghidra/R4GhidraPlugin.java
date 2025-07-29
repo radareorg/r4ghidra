@@ -40,6 +40,7 @@ import java.util.List;
 import javax.swing.*;
 import javax.swing.SwingUtilities;
 import r4ghidra.repl.R2CommandHandler;
+import r4ghidra.repl.R2Context;
 import r4ghidra.repl.handlers.*;
 import r4ghidra.repl.handlers.R2ClearCommandHandler;
 import r4ghidra.repl.handlers.R2FlagCommandHandler;
@@ -165,49 +166,14 @@ public class R4GhidraPlugin extends ProgramPlugin {
     R4GhidraState.api = new FlatProgramAPI(program);
     R4GhidraState.codeViewer = getTool().getService(CodeViewerService.class);
 
-    // Set initial seek to the current cursor position in the UI
-    //R4GhidraState.r2Seek = getCurrentAddressFromUI(program);
-
     // Create the command shell when a program is opened
+    // This is when R2Context is instantiated
     if (shellProvider == null) {
       shellProvider = new R4CommandShellProvider(this, "R4Ghidra Shell");
     }
-  }
-
-  /**
-   * Get the current address from the UI cursor position Falls back to program entry point, or image
-   * base if entry point is not available
-   */
-  private Address getCurrentAddressFromUI(Program program) {
-    // Try to get the current cursor position from the tool
-    try {
-      Object currentLocation =
-          getTool()
-              .getService(ghidra.app.services.GoToService.class)
-              .getDefaultNavigatable()
-              .getLocation();
-      if (currentLocation != null
-          && currentLocation instanceof ghidra.program.util.ProgramLocation) {
-        return ((ghidra.program.util.ProgramLocation) currentLocation).getAddress();
-      }
-    } catch (Exception e) {
-      // Fall through to other methods if this fails
-    }
-
-    // Try to get the program entry point
-    try {
-      if (program.getExecutablePath() != null) {
-        Address entryPoint = program.getImageBase();
-        if (entryPoint != null) {
-          return entryPoint;
-        }
-      }
-    } catch (Exception e) {
-      // Fall through to using image base
-    }
-
-    // Fall back to program image base
-    return program.getImageBase();
+    R2Context context = shellProvider.getREPLContext(); // We may want to save this reference in a member for later use?
+    // Dynamically update the seek position for R2 based on Ghidra location
+    R4GhidraState.codeViewer.getListingPanel().setProgramLocationListener(new R4ProgramLocationListener(context));
   }
 
   @Override
