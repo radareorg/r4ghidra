@@ -159,7 +159,7 @@ private String formatInfoText(Program program, String arch, String bits, String 
 	try {
 	// Add program size
 	sb.append("size ")
-		.append(program.getMaxAddress().subtract(program.getMinAddress()) + 1)
+		.append(program.getMemory().getSize()) // getMinAddress and getMaxAddress can point to different AddressSpaces!
 		.append("\n");
 	} catch (Exception e) {
 	sb.append("# " + e.toString());
