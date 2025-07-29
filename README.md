@@ -1,5 +1,7 @@
 # R4Ghidra Plugin
 
+[![Build Extension](https://github.com/radareorg/r4ghidra/actions/workflows/gradle.yml/badge.svg)](https://github.com/radareorg/r4ghidra/actions/workflows/gradle.yml)
+
 R4Ghidra provides a standalone radare2 experience inside Ghidra, implemented fully in Java but powered by Ghidra's APIs internally. This plugin allows users to communicate from/to radare2 instances via r2web and r2pipe protocols.
 
 R4Ghidra supports not just the most common radare2 commands, but also all the handy command tricks you can do with r2 oneliners, including pipes, redirects, iterations, command substitution, file operations and more. The plugin features a complete REPL (Read-Eval-Print Loop) implementation that faithfully reproduces the radare2 command line experience within Ghidra.
