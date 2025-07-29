@@ -101,9 +101,24 @@ jobs:
         name: R4Ghidra-javadoc
         path: R4Ghidra/R4Ghidra-javadoc.zip
 
+  code-style:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+
+    - name: Run code style check
+      run: make indent && git diff --exit-code
+
   release:
     runs-on: "ubuntu-latest"
-    needs: [build, documentation]
+    needs: [build, documentation, code-style]
 
     steps:
     - name: Download binaries

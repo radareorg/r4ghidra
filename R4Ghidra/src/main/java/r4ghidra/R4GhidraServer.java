@@ -10,9 +10,9 @@ import r4ghidra.repl.R4GhidraHttpHandler;
 
 /**
  * HTTP server for R4Ghidra
- * <p>
- * Provides an HTTP interface to R4Ghidra commands, allowing external tools like radare2
- * to interact with Ghidra via a web API.
+ *
+ * <p>Provides an HTTP interface to R4Ghidra commands, allowing external tools like radare2 to
+ * interact with Ghidra via a web API.
  */
 public class R4GhidraServer {
   static HttpServer server;
@@ -53,9 +53,7 @@ public class R4GhidraServer {
     server.start();
   }
 
-  /**
-   * Stop the HTTP server if it's running
-   */
+  /** Stop the HTTP server if it's running */
   public static void stop() {
     if (server != null) {
       server.stop(0);
