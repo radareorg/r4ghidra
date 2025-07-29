@@ -15,12 +15,13 @@ clean mrproper:
 R2PM_BINDIR=$(shell r2pm -H R2PM_BINDIR)
 
 install:
-	ln -fs $(shell pwd)/r2g $(R2PM_BINDIR)/r2g
+	ln -fs $(shell pwd)/r4g $(R2PM_BINDIR)/r4g
 	mkdir -p ~/ghidra_scripts
 	ln -fs $(shell pwd)/$(SCRIPT) ~/ghidra_scripts/$(SCRIPT)
 	$(MAKE) -C R4Ghidra install
 
 uninstall:
+	rm -f $(R2PM_BINDIR)/r4g
 	rm -f $(R2PM_BINDIR)/r2g
 	$(MAKE) -C R4Ghidra uninstall
 

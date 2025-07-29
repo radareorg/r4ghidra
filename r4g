@@ -1,19 +1,37 @@
 #!/bin/sh
 
+HOST=localhost
+PORT=9191
+
 ROOT=$(dirname `readlink $0` 2> /dev/null)
 if [ -n "${ROOT}" ]; then
 	cd "${ROOT}"
 fi
 
 if [ -z "$R2PIPE_IN" ]; then
-	echo "This program must be run from r2 using #!pipe r2g"
+	if [ "$1" = cmd ]; then
+		shift
+		curl "http://${HOST}:${PORT}/cmd/$@"
+		rc=$?
+		echo
+		exit $rc
+	fi
+	echo "# This program is experimental and requires r2pipe to run"
+	echo
+	echo "In the radare2 shell type: r2 -c '#!pipe r4g'"
+	echo
+	echo "# Alternatively you can connect with:"
+	echo
+	echo "r2 -C http://${HOST}:${PORT}/cmd/"
+	echo "r2 -c '=+http://${HOST}:${PORT}/cmd/' --"
 	exit 1
 fi
 if [ -z "$1" ]; then
-	echo "Usage: r2ghidra [command]"
+	echo "Usage: r4g [command]"
 	echo "Commands:"
-	echo "  r2            .!r2g r2          # import r2ghidra into cmd.pdc"
-	echo '  dec [addr]    !r2g dec `?v $$`  # decompile function at given address'
+	echo "  cmd [r4cmd]                     # run r4ghidra commands with curl"
+	echo "  r2            .!r4g r2          # import r4ghidra into cmd.pdc"
+	echo '  dec [addr]    !r4g dec `?v $$`  # decompile function at given address'
 	echo "  pull                            # pull changes from ghidra into r2"
 	echo "  push                            # push comments and functions names from r2 to ghidra"
 	echo "  client [addr]                   # call the server to request the decompilation"
@@ -27,18 +45,18 @@ FCNADDR=${R2_XOFFSET}
 TESTBIN=/bin/ls
 case "$1" in
 r2)
-	#echo '"(pdcg,!r2g client `?v $FB`>.a,. .a,rm .a)"'
+	#echo '"(pdcg,!r4g client `?v $FB`>.a,. .a,rm .a)"'
 	#echo 'e cmd.pdc=.(pdcg)'
 	#echo 'e cmd.pdc=$ghidra-dec'
-	echo '"$pddg*=#!pipe r2g pdd*"'
-	echo '"$pddg=#!pipe r2g pdd"'
+	echo '"$pddg*=#!pipe r4g pdd*"'
+	echo '"$pddg=#!pipe r4g pdd"'
 	echo 'e cmd.pdd=pddg'
 	;;
 headless)
-	echo "Headless r2ghidra is WIP"
+	echo "Headless r4ghidra is WIP"
 	TESTBIN="$2"
 	if [ -z "${TESTBIN}" ]; then
-		echo "Usage: r2g server /path/to/file"
+		echo "Usage: r4g server /path/to/file"
 	else
 		rm -rf Test.*
 		analyzeHeadless . Test.gpr -import ${TESTBIN} \
@@ -60,13 +78,13 @@ import|pull)
 	TESTBIN=/bin/ls
 	FCNADDR=$2
 	echo "Assuming you have r2 http server on port 9090"
-	echo "r2 -e http.port=9090 -c'& =h' /bin/ls"
+	echo "r2 -e http.port=9191 -c'& =h' /bin/ls"
 	rm -rf Test.*
 	analyzeHeadless . Test.gpr -import ${TESTBIN} -postScript ghidra2radare.py -deleteProject > /dev/null 2>&1
 	cat ghidra-output.r2
 	;;
-*)
-	curl "http://localhost:8002/cmd/$@"
+cmd|*)
+	curl "http://${HOST}:${PORT}/cmd/$@"
 	;;
 esac
 
