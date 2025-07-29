@@ -1,6 +1,6 @@
-# R4Ghidra Plugin
+<img width="128px" height="128px" align="left" style="float: left; margin: 0 10px 0 0;" alt="r2ghidra logo" src="https://raw.githubusercontent.com/radareorg/r4ghidra/master/doc/images/r4ghidra-logo2.png?nocache">
 
-![r4ghidra-logo](doc/images/r4ghidra-logo2.jpg)
+<h1>Radare For Ghidra</h1>
 
 [![Build Extension](https://github.com/radareorg/r4ghidra/actions/workflows/gradle.yml/badge.svg)](https://github.com/radareorg/r4ghidra/actions/workflows/gradle.yml)
 
@@ -9,8 +9,6 @@ R4Ghidra provides a standalone radare2 experience inside Ghidra, implemented ful
 R4Ghidra supports not just the most common radare2 commands, but also all the handy command tricks you can do with r2 oneliners, including pipes, redirects, iterations, command substitution, file operations and more. The plugin features a complete REPL (Read-Eval-Print Loop) implementation that faithfully reproduces the radare2 command line experience within Ghidra.
 
 Please use the [Issue tracker](https://github.com/radareorg/ghidra-r2web/issues) for feedback and bug reports!
-
-![r4ghidra](doc/images/r4ghidra.png)
 
 
 ## Build
