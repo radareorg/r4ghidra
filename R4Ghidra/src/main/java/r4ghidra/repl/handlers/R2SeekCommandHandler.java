@@ -132,7 +132,7 @@ public String execute(R2Command command, R2Context context) throws R2CommandExce
 
 private void seekTo(R2Context context, Address a){
 	context.setCurrentAddress(a);
-	R4GhidraState.codeViewer.goTo(new ProgramLocation(R4GhidraState.api.getCurrentProgram(),a),false);
+	R4GhidraState.goToLocation(a);
 }
 
 /** Format the result according to the command suffix */
