@@ -14,6 +14,8 @@ public class R4ProgramLocationListener implements ProgramLocationListener {
 
   @Override
   public void programLocationChanged(ProgramLocation programLocation, EventTrigger eventTrigger) {
-    context.setCurrentAddress(programLocation.getAddress());
+    if (context.getEvalConfig().getBool("r4g.location.follow", true)) {
+      context.setCurrentAddress(programLocation.getAddress());
+    }
   }
 }

@@ -132,7 +132,9 @@ public String execute(R2Command command, R2Context context) throws R2CommandExce
 
 private void seekTo(R2Context context, Address a){
 	context.setCurrentAddress(a);
-	R4GhidraState.goToLocation(a);
+	if (context.getEvalConfig().getBool("r4g.seek.follow", true)) {
+		R4GhidraState.goToLocation(a);
+	}
 }
 
 /** Format the result according to the command suffix */
