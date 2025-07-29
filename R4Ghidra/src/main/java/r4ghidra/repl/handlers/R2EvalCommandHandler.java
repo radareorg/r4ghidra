@@ -225,6 +225,8 @@ public String getHelp() {
 			sb.append(" cfg.endian       set endian (big/little/middle)\n");
 			sb.append(" cfg.sandbox      enable sandbox mode (true/false)\n");
 			sb.append(" cfg.sandbox.grain list of sandboxed resources\n");
+			sb.append(" r4g.seek.follow	follow seek address in Code Viewer (true/false)\n");
+			sb.append(" r4g.location.follow	follow location of Code Viewer in seek address (true/false)\n");
 			sb.append(" scr.color        set color level (0-3)\n");
 			sb.append(" scr.prompt       show prompt (true/false)\n");
 			sb.append(" dir.tmp          set temporary directory\n");

@@ -71,10 +71,14 @@ private void initDefaults() {
 
 	// IO settings
 	set("io.cache", "false", false);
+
+	// R4Ghidra settings
+	set("r4g.seek.follow", "true", false);
+	set("r4g.location.follow", "true", false);
 }
 
 /**
-* Register a change listener for a variable
+* Register a change listgetener for a variable
 *
 * @param key The variable name
 * @param listener The listener to call when the variable changes
