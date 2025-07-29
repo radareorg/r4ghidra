@@ -19,6 +19,19 @@ make
 
 The extension .zip will be created in `dist/` directory. You can also download pre-built releases from the [release page](https://github.com/radareorg/ghidra-r2web/releases).
 
+To install that extension just run `make install` and that will remove the current r4ghidra plugin in your detected Ghidra installation and place the last build into the ghidra Extensions directory. And you will only need to follow  these simple steps:
+
+1. Run ./ghidraRun
+2. In **Ghidra Project Manager** choose `File->Install Extensions`
+3. Click on the R4Ghidra plugin, close the window
+4. You will be prompted to restart ghidra. Do it
+5. When loading the project it will prompt you to setup the R4Ghidra plugin
+6. Click in `Tools->R4Ghidra` menu
+
+### Debugging Issues
+
+ghidraRun will start in background mode by default, you must edit the script to replace "bg" with "fg" to see backtraces and other startup debugging logs.
+
 ### Build Requirements
 
 - Java21

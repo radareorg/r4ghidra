@@ -18,9 +18,11 @@ install:
 	ln -fs $(shell pwd)/r2g $(R2PM_BINDIR)/r2g
 	mkdir -p ~/ghidra_scripts
 	ln -fs $(shell pwd)/$(SCRIPT) ~/ghidra_scripts/$(SCRIPT)
+	$(MAKE) -C R4Ghidra install
 
 uninstall:
 	rm -f $(R2PM_BINDIR)/r2g
+	$(MAKE) -C R4Ghidra uninstall
 
 GJF_VERSION=1.28.0
 GJF=google-java-format-$(GJF_VERSION)-all-deps.jar
