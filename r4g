@@ -7,15 +7,23 @@ ROOT=$(dirname `readlink $0` 2> /dev/null)
 if [ -n "${ROOT}" ]; then
 	cd "${ROOT}"
 fi
+r4cmd() {
+	ARG=`jq -nr --arg x "$@" '$x|@uri'`
+	curl "http://${HOST}:${PORT}/cmd/$ARG"
+	rc=$?
+	echo
+	exit $rc
+}
 
 if [ -z "$R2PIPE_IN" ]; then
 	if [ "$1" = cmd ]; then
 		shift
-		curl "http://${HOST}:${PORT}/cmd/$@"
-		rc=$?
-		echo
-		exit $rc
+		r4cmd "$@"
 	fi
+	echo "# You can run commands in the R4Ghidra webserver like this"
+	echo
+	echo "r4g cmd px"
+	echo
 	echo "# This program is experimental and requires r2pipe to run"
 	echo
 	echo "In the radare2 shell type: r2 -c '#!pipe r4g'"
@@ -84,7 +92,7 @@ import|pull)
 	cat ghidra-output.r2
 	;;
 cmd|*)
-	curl "http://${HOST}:${PORT}/cmd/$@"
+	r4cmd "$@"
 	;;
 esac
 
