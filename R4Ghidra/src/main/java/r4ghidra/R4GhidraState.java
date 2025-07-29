@@ -15,11 +15,13 @@ import ghidra.program.util.ProgramLocation;
 public class R4GhidraState {
   /** Reference to the Ghidra program API */
   public static FlatProgramAPI api = null;
+
   public static CodeViewerService codeViewer = null;
 
   public static void goToLocation(Address a) {
     if (R4GhidraState.codeViewer != null) {
-      R4GhidraState.codeViewer.goTo(new ProgramLocation(R4GhidraState.api.getCurrentProgram(),a),false);
+      R4GhidraState.codeViewer.goTo(
+          new ProgramLocation(R4GhidraState.api.getCurrentProgram(), a), false);
     }
   }
 }

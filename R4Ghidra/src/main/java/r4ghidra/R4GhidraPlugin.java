@@ -29,7 +29,6 @@ import ghidra.app.services.CodeViewerService;
 import ghidra.framework.plugintool.*;
 import ghidra.framework.plugintool.util.PluginStatus;
 import ghidra.program.flatapi.FlatProgramAPI;
-import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Program;
 import ghidra.util.HelpLocation;
 import java.awt.BorderLayout;
@@ -171,9 +170,13 @@ public class R4GhidraPlugin extends ProgramPlugin {
     if (shellProvider == null) {
       shellProvider = new R4CommandShellProvider(this, "R4Ghidra Shell");
     }
-    R2Context context = shellProvider.getREPLContext(); // We may want to save this reference in a member for later use?
+    R2Context context =
+        shellProvider
+            .getREPLContext(); // We may want to save this reference in a member for later use?
     // Dynamically update the seek position for R2 based on Ghidra location
-    R4GhidraState.codeViewer.getListingPanel().setProgramLocationListener(new R4ProgramLocationListener(context));
+    R4GhidraState.codeViewer
+        .getListingPanel()
+        .setProgramLocationListener(new R4ProgramLocationListener(context));
   }
 
   @Override

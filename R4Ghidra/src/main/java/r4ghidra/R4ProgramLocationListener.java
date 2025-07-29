@@ -6,14 +6,14 @@ import ghidra.program.util.ProgramLocation;
 import r4ghidra.repl.R2Context;
 
 public class R4ProgramLocationListener implements ProgramLocationListener {
-    R2Context context;
-    public R4ProgramLocationListener(R2Context context) {
-        this.context=context;
-    }
+  R2Context context;
 
+  public R4ProgramLocationListener(R2Context context) {
+    this.context = context;
+  }
 
-    @Override
-    public void programLocationChanged(ProgramLocation programLocation, EventTrigger eventTrigger) {
-        context.setCurrentAddress(programLocation.getAddress());
-    }
+  @Override
+  public void programLocationChanged(ProgramLocation programLocation, EventTrigger eventTrigger) {
+    context.setCurrentAddress(programLocation.getAddress());
+  }
 }
