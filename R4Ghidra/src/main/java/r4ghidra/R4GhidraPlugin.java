@@ -25,6 +25,7 @@ import docking.widgets.OptionDialog;
 import ghidra.app.CorePluginPackage;
 import ghidra.app.plugin.PluginCategoryNames;
 import ghidra.app.plugin.ProgramPlugin;
+import ghidra.app.services.CodeViewerService;
 import ghidra.framework.plugintool.*;
 import ghidra.framework.plugintool.util.PluginStatus;
 import ghidra.program.flatapi.FlatProgramAPI;
@@ -162,9 +163,10 @@ public class R4GhidraPlugin extends ProgramPlugin {
   @Override
   protected void programOpened(Program program) {
     R4GhidraState.api = new FlatProgramAPI(program);
+    R4GhidraState.codeViewer = getTool().getService(CodeViewerService.class);
 
     // Set initial seek to the current cursor position in the UI
-    R4GhidraState.r2Seek = getCurrentAddressFromUI(program);
+    //R4GhidraState.r2Seek = getCurrentAddressFromUI(program);
 
     // Create the command shell when a program is opened
     if (shellProvider == null) {

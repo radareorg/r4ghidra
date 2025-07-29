@@ -1,7 +1,7 @@
 package r4ghidra;
 
+import ghidra.app.services.CodeViewerService;
 import ghidra.program.flatapi.FlatProgramAPI;
-import ghidra.program.model.address.Address;
 
 /**
  * Shared state for R4Ghidra
@@ -11,12 +11,8 @@ import ghidra.program.model.address.Address;
  * consider adding proper validation, thread safety, and encapsulation.
  */
 public class R4GhidraState {
-  /** Current address (seek) in the R2 context */
-  public static Address r2Seek = null;
-
   /** Reference to the Ghidra program API */
   public static FlatProgramAPI api = null;
+  public static CodeViewerService codeViewer = null;
 
-  /** Current block size for memory operations */
-  public static int blockSize = 128;
 }

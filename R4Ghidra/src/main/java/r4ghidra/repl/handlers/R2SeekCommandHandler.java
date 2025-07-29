@@ -2,7 +2,9 @@ package r4ghidra.repl.handlers;
 
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
+import ghidra.program.util.ProgramLocation;
 import org.json.JSONObject;
+import r4ghidra.R4GhidraState;
 import r4ghidra.repl.R2Command;
 import r4ghidra.repl.R2CommandException;
 import r4ghidra.repl.R2CommandHandler;
@@ -36,7 +38,7 @@ public String execute(R2Command command, R2Context context) throws R2CommandExce
 		// Use RNum API to evaluate address expressions
 		long addrValue = R2NumUtil.evaluateExpression(context, addrStr);
 		Address newAddr = context.getAPI().toAddr(addrValue);
-		context.setCurrentAddress(newAddr);
+		seekTo(context, newAddr);
 		return formatResult(newAddr, context, command);
 	} catch (R2NumException e) {
 		throw new R2CommandException("Invalid address expression: " + e.getMessage());
@@ -64,7 +66,7 @@ public String execute(R2Command command, R2Context context) throws R2CommandExce
 			offset = 1; // Default to 1 for non-positive values
 			}
 			Address newAddr = context.getCurrentAddress().subtract(offset);
-			context.setCurrentAddress(newAddr);
+			seekTo(context, newAddr);
 			return formatResult(newAddr, context, command);
 		} catch (R2NumException e) {
 			throw new R2CommandException("Invalid offset expression: " + e.getMessage());
@@ -88,7 +90,7 @@ public String execute(R2Command command, R2Context context) throws R2CommandExce
 			throw new R2CommandException("No function found at current address");
 			}
 			Address entry = func.getEntryPoint();
-			context.setCurrentAddress(entry);
+			seekTo(context, entry);
 			return formatResult(entry, context, command);
 		}
 		// Fallback: seek forward by delta bytes
@@ -99,7 +101,7 @@ public String execute(R2Command command, R2Context context) throws R2CommandExce
 			offset = 1;
 			}
 			Address newAddr = context.getCurrentAddress().add(offset);
-			context.setCurrentAddress(newAddr);
+			seekTo(context, newAddr);
 			return formatResult(newAddr, context, command);
 		} catch (R2NumException e) {
 			throw new R2CommandException("Invalid offset expression: " + e.getMessage());
@@ -126,6 +128,11 @@ public String execute(R2Command command, R2Context context) throws R2CommandExce
 		}
 		throw new R2CommandException("Unknown seek subcommand: s" + subcommand);
 	}
+}
+
+private void seekTo(R2Context context, Address a){
+	context.setCurrentAddress(a);
+	R4GhidraState.codeViewer.goTo(new ProgramLocation(R4GhidraState.api.getCurrentProgram(),a),false);
 }
 
 /** Format the result according to the command suffix */
@@ -199,7 +206,7 @@ private String executeSeekNibblesCommand(R2Command command, R2Context context)
 
 	// Update current address
 	Address newAddress = context.getAPI().toAddr(newAddr);
-	context.setCurrentAddress(newAddress);
+	seekTo(context, newAddress);
 
 	// Return formatted result
 	return formatResult(newAddress, context, command);

@@ -9,11 +9,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 import r4ghidra.R4CommandShellProvider;
-import r4ghidra.R4GhidraState;
 import r4ghidra.repl.config.R2EvalChangeListener;
 import r4ghidra.repl.config.R2EvalConfig;
 import r4ghidra.repl.filesystem.R2FileSystem;
 import r4ghidra.repl.filesystem.R2SandboxedFileSystem;
+import r4ghidra.R4GhidraState;
 
 /**
  * Context for R2 command execution
@@ -39,8 +39,6 @@ public class R2Context {
   /** Apply all sandbox restrictions */
   public static final int R_SANDBOX_GRAIN_ALL = 16 | 8 | 4 | 2 | 1;
 
-  // Ghidra API reference
-  private FlatProgramAPI api;
 
   // Current address (seek)
   private Address currentAddress;
@@ -81,9 +79,9 @@ public class R2Context {
   /** Create a new context with default values */
   public R2Context() {
     // We'll initialize these from R4GhidraState for compatibility
-    this.api = R4GhidraState.api;
-    this.currentAddress = R4GhidraState.r2Seek;
-    this.blockSize = R4GhidraState.blockSize;
+
+    this.currentAddress = R4GhidraState.api.getCurrentProgram().getMinAddress();
+    this.blockSize = 128;
 
     this.lastErrorCode = 0;
     this.lastErrorMessage = "";
@@ -213,9 +211,6 @@ public class R2Context {
    */
   public void setCurrentAddress(Address addr) {
     this.currentAddress = addr;
-
-    // Update global state for backwards compatibility
-    R4GhidraState.r2Seek = addr;
   }
 
   /**
@@ -235,9 +230,6 @@ public class R2Context {
   public void setBlockSize(int size) {
     this.blockSize = size;
 
-    // Update global state for backwards compatibility
-    R4GhidraState.blockSize = size;
-
     // Update config value to stay in sync
     evalConfig.set("asm.bytes", Integer.toString(size), false); // Avoid circular updates
   }
@@ -248,19 +240,7 @@ public class R2Context {
    * @return The FlatProgramAPI instance
    */
   public FlatProgramAPI getAPI() {
-    return api;
-  }
-
-  /**
-   * Set the Ghidra API reference
-   * 
-   * @param api The FlatProgramAPI instance to use
-   */
-  public void setAPI(FlatProgramAPI api) {
-    this.api = api;
-
-    // Update global state for backwards compatibility
-    R4GhidraState.api = api;
+    return R4GhidraState.api;
   }
 
   /**
@@ -273,10 +253,10 @@ public class R2Context {
     try {
       // Use R2NumUtil to evaluate complex expressions
       long addrValue = r4ghidra.repl.num.R2NumUtil.evaluateExpression(this, addressStr);
-      return api.toAddr(addrValue);
+      return R4GhidraState.api.toAddr(addrValue);
     } catch (r4ghidra.repl.num.R2NumException e) {
       // Fall back to direct conversion if expression evaluation fails
-      return api.toAddr(addressStr);
+      return R4GhidraState.api.toAddr(addressStr);
     }
   }
 
