@@ -7,10 +7,25 @@ package r4ghidra.repl.handlers;
  */
 public class CommentTypeAdapter {
 // Comment type constants
+/**
+ * End-of-line comment type (value 0)
+ */
 public static final int EOL = 0;
+/**
+ * Pre comment type (value 1)
+ */
 public static final int PRE = 1;
+/**
+ * Post comment type (value 2)
+ */
 public static final int POST = 2;
+/**
+ * Plate comment type (value 3)
+ */
 public static final int PLATE = 3;
+/**
+ * Repeatable comment type (value 4)
+ */
 public static final int REPEATABLE = 4;
 
 // Cached CommentType object for EOL comments

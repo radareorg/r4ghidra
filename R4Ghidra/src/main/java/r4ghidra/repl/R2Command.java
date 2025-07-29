@@ -35,12 +35,20 @@ public class R2Command {
     this.multiAddressInfo = null;
   }
 
-  /** Get the command prefix (first character of the command) */
+  /** 
+   * Get the command prefix (first character of the command)
+   * 
+   * @return The command prefix as a string
+   */
   public String getPrefix() {
     return prefix;
   }
 
-  /** Get the subcommand (everything after the prefix and before any space) */
+  /** 
+   * Get the subcommand (everything after the prefix and before any space)
+   * 
+   * @return The subcommand as a string
+   */
   public String getSubcommand() {
     return subcommand;
   }
@@ -118,12 +126,22 @@ public class R2Command {
     return subcommand != null && subcommand.endsWith("?*");
   }
 
-  /** Get all arguments as a list */
+  /** 
+   * Get all arguments as a list
+   * 
+   * @return An unmodifiable list of command arguments
+   */
   public List<String> getArguments() {
     return Collections.unmodifiableList(arguments);
   }
 
-  /** Get a specific argument by index, or defaultValue if the index is out of range */
+  /** 
+   * Get a specific argument by index, or defaultValue if the index is out of range
+   * 
+   * @param index The index of the argument to retrieve
+   * @param defaultValue The value to return if the index is out of range
+   * @return The argument at the specified index or the default value
+   */
   public String getArgument(int index, String defaultValue) {
     if (index >= 0 && index < arguments.size()) {
       return arguments.get(index);
@@ -131,52 +149,97 @@ public class R2Command {
     return defaultValue;
   }
 
-  /** Get the first argument, or defaultValue if there are no arguments */
+  /** 
+   * Get the first argument, or defaultValue if there are no arguments
+   * 
+   * @param defaultValue The value to return if there are no arguments
+   * @return The first argument or the default value
+   */
   public String getFirstArgument(String defaultValue) {
     return getArgument(0, defaultValue);
   }
 
-  /** Get the number of arguments */
+  /** 
+   * Get the number of arguments
+   * 
+   * @return The number of arguments
+   */
   public int getArgumentCount() {
     return arguments.size();
   }
 
-  /** Check if this command has a temporary address specified via @ syntax */
+  /** 
+   * Check if this command has a temporary address specified via @ syntax
+   * 
+   * @return True if a temporary address is specified, false otherwise
+   */
   public boolean hasTemporaryAddress() {
     return temporaryAddress != null;
   }
 
-  /** Get the temporary address specified via @ syntax */
+  /** 
+   * Get the temporary address specified via @ syntax
+   * 
+   * @return The temporary address or null if not specified
+   */
   public Address getTemporaryAddress() {
     return temporaryAddress;
   }
 
-  /** Check if this command matches the given prefix */
+  /** 
+   * Check if this command matches the given prefix
+   * 
+   * @param prefix The prefix to check against
+   * @return True if the command has the specified prefix, false otherwise
+   */
   public boolean hasPrefix(String prefix) {
     return this.prefix.equals(prefix);
   }
 
-  /** Check if this command matches the given prefix and subcommand */
+  /** 
+   * Check if this command matches the given prefix and subcommand
+   * 
+   * @param prefix The prefix to check against
+   * @param subcommand The subcommand to check against
+   * @return True if both the prefix and subcommand match, false otherwise
+   */
   public boolean matches(String prefix, String subcommand) {
     return this.prefix.equals(prefix) && this.subcommand.equals(subcommand);
   }
 
-  /** Check if the subcommand starts with the given string */
+  /** 
+   * Check if the subcommand starts with the given string
+   * 
+   * @param str The string to check against
+   * @return True if the subcommand starts with the specified string, false otherwise
+   */
   public boolean subcommandStartsWith(String str) {
     return subcommand.startsWith(str);
   }
 
-  /** Check if this command uses the @@ syntax for multiple addresses */
+  /** 
+   * Check if this command uses the @@ syntax for multiple addresses
+   * 
+   * @return True if this command uses multiple address syntax, false otherwise
+   */
   public boolean hasMultiAddressInfo() {
     return multiAddressInfo != null && !multiAddressInfo.isEmpty();
   }
 
-  /** Get the multi-address information (part after @@) for this command */
+  /** 
+   * Get the multi-address information (part after @@) for this command
+   * 
+   * @return The multi-address information string or null if not specified
+   */
   public String getMultiAddressInfo() {
     return multiAddressInfo;
   }
 
-  /** Set the multi-address information for this command */
+  /** 
+   * Set the multi-address information for this command
+   * 
+   * @param info The multi-address information to set
+   */
   public void setMultiAddressInfo(String info) {
     this.multiAddressInfo = info;
   }

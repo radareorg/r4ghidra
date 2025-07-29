@@ -16,6 +16,13 @@ import r4ghidra.repl.R2Context;
  * Handler for the 'a' (analyze) command family: af (analyze function), afl (list functions), afi
  * (function info)
  */
+/**
+ * Handler for the 'a' (analyze) command family: af (analyze function), afl (list functions),
+ * and afi (function info).
+ * <p>
+ * This class provides functionality to analyze code at the current address, list all functions
+ * in the program, and display detailed information about the current function.
+ */
 public class R2AnalyzeCommandHandler implements R2CommandHandler {
 
 @Override

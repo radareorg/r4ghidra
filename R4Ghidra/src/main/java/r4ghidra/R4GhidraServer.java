@@ -8,6 +8,12 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import r4ghidra.repl.R4GhidraHttpHandler;
 
+/**
+ * HTTP server for R4Ghidra
+ * <p>
+ * Provides an HTTP interface to R4Ghidra commands, allowing external tools like radare2
+ * to interact with Ghidra via a web API.
+ */
 public class R4GhidraServer {
   static HttpServer server;
 
@@ -31,6 +37,13 @@ public class R4GhidraServer {
     }
   }
 
+  /**
+   * Start the HTTP server on the specified port
+   *
+   * @param plugin The R4Ghidra plugin instance that provides command handling
+   * @param port The port number to listen on
+   * @throws IOException If an error occurs while starting the server
+   */
   public static void start(R4GhidraPlugin plugin, int port) throws IOException {
     stop();
     server = HttpServer.create(new InetSocketAddress(port), 0);
@@ -40,6 +53,9 @@ public class R4GhidraServer {
     server.start();
   }
 
+  /**
+   * Stop the HTTP server if it's running
+   */
   public static void stop() {
     if (server != null) {
       server.stop(0);

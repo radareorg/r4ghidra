@@ -51,6 +51,11 @@ public class R2REPLImpl {
     commandRegistry.put(prefix, handler);
   }
 
+/**
+ * Register command handlers with the REPL
+ *
+ * @param commands The list of command handlers to register
+ */
 public void registerCommands(List<R2CommandHandler> commands) {
     // Register all command handlers from the plugin
     Map<String, R2CommandHandler> commandRegistry = new HashMap<>();
@@ -1125,6 +1130,11 @@ public void registerCommands(List<R2CommandHandler> commands) {
     return cmd;
   }
 
+  /**
+   * Get the execution context
+   *
+   * @return The R2Context instance used by this REPL
+   */
   public R2Context getContext() {
     return context;
   }

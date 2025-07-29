@@ -16,7 +16,19 @@ import r4ghidra.repl.R2CommandException;
 import r4ghidra.repl.R2CommandHandler;
 import r4ghidra.repl.R2Context;
 
-/** Handler for the 'pdd' command - Decompile function at current address */
+/**
+ * Handler for the 'pdd' command - Decompile function at current address
+ * <p>
+ * This command uses Ghidra's decompiler to generate C-like pseudocode for the function at the current
+ * address. The output can be formatted in several ways: standard (with addresses), as radare2 commands,
+ * as JSON, or in a quiet format (without addresses).
+ * <p>
+ * The command supports the following formats:
+ * - pdd: standard output with addresses
+ * - pdd*: output as radare2 commands
+ * - pddj: output as JSON
+ * - pddq: quiet output (no addresses)
+ */
 public class R2DecompileCommandHandler implements R2CommandHandler {
 
 @Override

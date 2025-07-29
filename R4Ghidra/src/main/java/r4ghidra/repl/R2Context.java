@@ -24,12 +24,19 @@ import r4ghidra.repl.filesystem.R2SandboxedFileSystem;
  */
 public class R2Context {
   // Sandbox permission flags
+  /** No sandbox restrictions */
   public static final int R_SANDBOX_GRAIN_NONE = 0;
+  /** Restrict socket operations */
   public static final int R_SANDBOX_GRAIN_SOCKET = 1;
+  /** Restrict disk access operations */
   public static final int R_SANDBOX_GRAIN_DISK = 2;
+  /** Restrict file operations */
   public static final int R_SANDBOX_GRAIN_FILES = 4;
+  /** Restrict command execution */
   public static final int R_SANDBOX_GRAIN_EXEC = 8;
+  /** Restrict environment variable access */
   public static final int R_SANDBOX_GRAIN_ENVIRON = 16;
+  /** Apply all sandbox restrictions */
   public static final int R_SANDBOX_GRAIN_ALL = 16 | 8 | 4 | 2 | 1;
 
   // Ghidra API reference
@@ -190,12 +197,20 @@ public class R2Context {
         });
   }
 
-  /** Get the current address (seek) */
+  /**
+   * Get the current address (seek)
+   * 
+   * @return The current address, or null if not set
+   */
   public Address getCurrentAddress() {
     return currentAddress;
   }
 
-  /** Set the current address (seek) */
+  /**
+   * Set the current address (seek)
+   * 
+   * @param addr The address to set as current
+   */
   public void setCurrentAddress(Address addr) {
     this.currentAddress = addr;
 
@@ -203,12 +218,20 @@ public class R2Context {
     R4GhidraState.r2Seek = addr;
   }
 
-  /** Get the current block size */
+  /**
+   * Get the current block size
+   * 
+   * @return The current block size in bytes
+   */
   public int getBlockSize() {
     return blockSize;
   }
 
-  /** Set the current block size */
+  /**
+   * Set the current block size
+   * 
+   * @param size The block size in bytes to set
+   */
   public void setBlockSize(int size) {
     this.blockSize = size;
 
@@ -219,12 +242,20 @@ public class R2Context {
     evalConfig.set("asm.bytes", Integer.toString(size), false); // Avoid circular updates
   }
 
-  /** Get the Ghidra API reference */
+  /**
+   * Get the Ghidra API reference
+   * 
+   * @return The FlatProgramAPI instance
+   */
   public FlatProgramAPI getAPI() {
     return api;
   }
 
-  /** Set the Ghidra API reference */
+  /**
+   * Set the Ghidra API reference
+   * 
+   * @param api The FlatProgramAPI instance to use
+   */
   public void setAPI(FlatProgramAPI api) {
     this.api = api;
 
@@ -232,7 +263,12 @@ public class R2Context {
     R4GhidraState.api = api;
   }
 
-  /** Parse an address string into an Address object */
+  /**
+   * Parse an address string into an Address object
+   * 
+   * @param addressStr The address string to parse
+   * @return The Address object representing the parsed address
+   */
   public Address parseAddress(String addressStr) {
     try {
       // Use R2NumUtil to evaluate complex expressions
@@ -244,28 +280,51 @@ public class R2Context {
     }
   }
 
-  /** Format an address as a hex string */
+  /**
+   * Format an address as a hex string
+   * 
+   * @param addr The address to format
+   * @return The formatted address as a hex string
+   */
   public String formatAddress(Address addr) {
     return "0x" + String.format("%1$08x", addr.getUnsignedOffset());
   }
 
-  /** Format a long value as a hex address string */
+  /**
+   * Format a long value as a hex address string
+   * 
+   * @param addr The address value to format
+   * @return The formatted address as a hex string
+   */
   public String formatAddress(long addr) {
     return "0x" + String.format("%1$08x", addr);
   }
 
-  /** Set an error status */
+  /**
+   * Set an error status
+   * 
+   * @param code The error code
+   * @param message The error message
+   */
   public void setError(int code, String message) {
     this.lastErrorCode = code;
     this.lastErrorMessage = message;
   }
 
-  /** Get the last error code */
+  /**
+   * Get the last error code
+   * 
+   * @return The last error code, 0 if no error
+   */
   public int getLastErrorCode() {
     return lastErrorCode;
   }
 
-  /** Get the last error message */
+  /**
+   * Get the last error message
+   * 
+   * @return The last error message, empty string if no error
+   */
   public String getLastErrorMessage() {
     return lastErrorMessage;
   }
@@ -276,32 +335,59 @@ public class R2Context {
     this.lastErrorMessage = "";
   }
 
-  /** Set a user-defined variable */
+  /**
+   * Set a user-defined variable
+   * 
+   * @param name The variable name
+   * @param value The variable value
+   */
   public void setVariable(String name, String value) {
     variables.put(name, value);
   }
 
-  /** Get a user-defined variable */
+  /**
+   * Get a user-defined variable
+   * 
+   * @param name The variable name
+   * @return The variable value, or empty string if not defined
+   */
   public String getVariable(String name) {
     return variables.getOrDefault(name, "");
   }
 
-  /** Check if a variable exists */
+  /**
+   * Check if a variable exists
+   * 
+   * @param name The variable name to check
+   * @return True if the variable exists, false otherwise
+   */
   public boolean hasVariable(String name) {
     return variables.containsKey(name);
   }
 
-  /** Get the configuration manager */
+  /**
+   * Get the configuration manager
+   * 
+   * @return The R2EvalConfig instance
+   */
   public R2EvalConfig getEvalConfig() {
     return evalConfig;
   }
 
-  /** Get the current sandbox flags */
+  /**
+   * Get the current sandbox flags
+   * 
+   * @return The sandbox flags as a bitmask
+   */
   public int getSandboxFlags() {
     return sandboxFlags;
   }
 
-  /** Set the sandbox flags */
+  /**
+   * Set the sandbox flags
+   * 
+   * @param flags The sandbox flags as a bitmask
+   */
   public void setSandboxFlags(int flags) {
     this.sandboxFlags = flags;
   }
@@ -316,7 +402,11 @@ public class R2Context {
     return (sandboxFlags & flag) != 0;
   }
 
-  /** Get the file system abstraction */
+  /**
+   * Get the file system abstraction
+   * 
+   * @return The R2FileSystem instance
+   */
   public R2FileSystem getFileSystem() {
     return fileSystem;
   }

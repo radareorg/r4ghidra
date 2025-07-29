@@ -15,6 +15,13 @@ import r4ghidra.repl.num.R2NumUtil;
  * <p>This command gets and sets the blocksize, which is the default number of bytes used by
  * commands that operate on memory when no size is explicitly specified.
  */
+/**
+ * Handler for the 'b' (blocksize) command
+ * <p>
+ * This command gets and sets the blocksize, which is the default number of bytes used by
+ * commands that operate on memory when no size is explicitly specified. The blocksize
+ * can be increased, decreased, or set to a specific value.
+ */
 public class R2BlocksizeCommandHandler implements R2CommandHandler {
 
 @Override

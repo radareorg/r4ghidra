@@ -10,7 +10,13 @@ import r4ghidra.repl.R2CommandException;
 import r4ghidra.repl.R2CommandHandler;
 import r4ghidra.repl.R2Context;
 
-/** Handler for the 'CC' (comment) command family */
+/**
+ * Handler for the 'CC' (comment) command family
+ * <p>
+ * Provides functionality to set and manipulate comments at specific addresses in the program.
+ * Currently supports the CCu (unique comment) subcommand, which sets a comment at the current address
+ * or at a specified address and can handle base64-encoded comments.
+ */
 public class R2CommentCommandHandler implements R2CommandHandler {
 
 @Override

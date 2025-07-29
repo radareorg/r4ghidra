@@ -36,6 +36,10 @@ public class R4CommandShellProvider extends ComponentProvider {
   private boolean isDialogShown = false;
 
   // Make this method public for plugin access
+  /**
+   * Close the command shell provider
+   * Removes this component provider from the tool
+   */
   public void close() {
     getTool().removeComponentProvider(this);
   }

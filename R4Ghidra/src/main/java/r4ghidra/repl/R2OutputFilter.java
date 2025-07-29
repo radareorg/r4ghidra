@@ -78,6 +78,16 @@ public class R2OutputFilter {
    * @param columns Column specification (comma-separated list of column indices) or null
    * @return The filtered output
    */
+  /**
+   * Apply filtering to command output
+   *
+   * @param output The command output to filter
+   * @param filter The filter pattern to apply
+   * @param useAndLogic Whether to use AND logic for multiple patterns (true) or OR logic (false)
+   * @param columns The column indices to extract, comma-separated
+   * @param useNegationLogic Whether to negate the filter pattern matches
+   * @return The filtered output
+   */
   public static String applyFilter(
       String output, String filter, boolean useAndLogic, String columns, boolean useNegationLogic) {
     // Handle empty output
@@ -342,6 +352,11 @@ public class R2OutputFilter {
     return result.toString();
   }
 
+  /**
+   * Get help text for the filter syntax
+   *
+   * @return A string containing help information about filter syntax
+   */
   public static String getFilterHelp() {
     StringBuilder sb = new StringBuilder();
     sb.append("Output Filter Syntax:\n");

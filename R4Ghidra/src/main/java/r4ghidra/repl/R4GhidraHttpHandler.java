@@ -23,6 +23,11 @@ public class R4GhidraHttpHandler implements HttpHandler {
   private Map<String, R2CommandHandler> commandRegistry;
 
   /** Create a new handler */
+  /**
+   * Create a new HTTP handler for R4Ghidra
+   *
+   * @param plugin The R4Ghidra plugin instance that provides command handlers
+   */
   public R4GhidraHttpHandler(R4GhidraPlugin plugin) {
     commandRegistry = new HashMap<>();
 

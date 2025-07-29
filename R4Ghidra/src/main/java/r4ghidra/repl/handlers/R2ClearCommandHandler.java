@@ -11,6 +11,12 @@ import r4ghidra.repl.R2Context;
  *
  * <p>This command clears the output textarea in the R4Ghidra console shell.
  */
+/**
+ * Handler for the 'clear' command
+ * <p>
+ * This command clears the output textarea in the R4Ghidra console shell.
+ * It provides a way for users to clean the interface during debugging sessions.
+ */
 public class R2ClearCommandHandler implements R2CommandHandler {
 
 @Override
