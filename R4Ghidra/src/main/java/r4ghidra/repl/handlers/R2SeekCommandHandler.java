@@ -112,13 +112,13 @@ public String execute(R2Command command, R2Context context) throws R2CommandExce
 
 		// 's-' - seek to previous location
 	case "-":
-		// Not implemented yet - would need history
-		throw new R2CommandException("Command 's-' not implemented yet");
+		context.undoCurrentAddress();
+		return context.formatAddress(followCurrentAddress(context));
 
 		// 's+' - seek to next location
 	case "+":
-		// Not implemented yet - would need history
-		throw new R2CommandException("Command 's+' not implemented yet");
+		context.redoCurrentAddress();
+		return context.formatAddress(followCurrentAddress(context));
 
 		// Other subcommands are not supported
 	default:
@@ -132,9 +132,15 @@ public String execute(R2Command command, R2Context context) throws R2CommandExce
 
 private void seekTo(R2Context context, Address a){
 	context.setCurrentAddress(a);
+	followCurrentAddress(context);
+}
+
+private Address followCurrentAddress(R2Context context){
+	Address a = context.getCurrentAddress();
 	if (context.getEvalConfig().getBool("r4g.seek.follow", true)) {
 		R4GhidraState.goToLocation(a);
 	}
+	return a;
 }
 
 /** Format the result according to the command suffix */

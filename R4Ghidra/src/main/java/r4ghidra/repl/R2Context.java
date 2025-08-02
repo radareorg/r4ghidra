@@ -4,10 +4,8 @@ import ghidra.program.flatapi.FlatProgramAPI;
 import ghidra.program.model.address.Address;
 import java.awt.Font;
 import java.awt.GraphicsEnvironment;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
+
 import r4ghidra.R4CommandShellProvider;
 import r4ghidra.repl.config.R2EvalChangeListener;
 import r4ghidra.repl.config.R2EvalConfig;
@@ -42,6 +40,8 @@ public class R2Context {
 
   // Current address (seek)
   private Address currentAddress;
+  private Stack<Address> addressUndoStack;
+  private Stack<Address> addressRedoStack;
 
   // Block size for commands that read/write blocks of memory
   private int blockSize;
@@ -81,6 +81,9 @@ public class R2Context {
     // We'll initialize these from R4GhidraState for compatibility
 
     this.currentAddress = R4GhidraState.api.getCurrentProgram().getMinAddress();
+    this.addressUndoStack =new Stack<Address>();
+    this.addressRedoStack = new Stack<Address>();
+
     this.blockSize = 128;
 
     this.lastErrorCode = 0;
@@ -210,9 +213,40 @@ public class R2Context {
    * @param addr The address to set as current
    */
   public void setCurrentAddress(Address addr) {
+    // Bail out in case of location event handler spam
+    if (addr.equals(this.currentAddress)) return;
+
+    Address prevAddress = this.currentAddress;
     this.currentAddress = addr;
+
+    // Handling spam from location event handler
+    this.addressUndoStack.push(prevAddress);
   }
 
+  /**
+   * Undoes the current address (seek)
+   */
+  public void undoCurrentAddress() {
+    try {
+      Address prevAddress = this.currentAddress; // We shouldn't push if there's nothing to pop!
+      this.currentAddress = this.addressUndoStack.pop();
+      this.addressRedoStack.push(prevAddress);
+    }catch(EmptyStackException ese){
+      // We just ignore the undo
+    }
+  }
+   /**
+   * Redoes the current address (seek)
+   */
+  public void redoCurrentAddress() {
+    try {
+      Address prevAddress = this.currentAddress; // We shouldn't push if there's nothing to pop!
+      this.currentAddress = this.addressRedoStack.pop();
+      this.addressUndoStack.push(prevAddress);
+    }catch(EmptyStackException ese){
+      // We just ignore the redo
+    }
+  }
   /**
    * Get the current block size
    * 
