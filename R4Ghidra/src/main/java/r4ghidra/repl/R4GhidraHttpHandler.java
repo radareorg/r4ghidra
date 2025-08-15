@@ -37,10 +37,30 @@ public class R4GhidraHttpHandler implements HttpHandler {
 
   @Override
   public void handle(HttpExchange exchange) throws IOException {
-    // Extract command from query string or path
-    String cmd = exchange.getRequestURI().getQuery();
-    if (cmd == null) {
-      cmd = exchange.getRequestURI().getPath().substring(5);
+    // Support POST requests (body contains the command) and fallback to GET/query/path
+    String method = exchange.getRequestMethod();
+    String cmd = null;
+
+    if ("POST".equalsIgnoreCase(method)) {
+      // Read the entire request body as the command (assume UTF-8)
+      java.io.InputStream is = exchange.getRequestBody();
+      try {
+        byte[] body = is.readAllBytes();
+        cmd = new String(body, java.nio.charset.StandardCharsets.UTF_8).trim();
+      } finally {
+        is.close();
+      }
+    } else {
+      // Extract command from query string or path (existing behavior)
+      cmd = exchange.getRequestURI().getQuery();
+      if (cmd == null) {
+        String path = exchange.getRequestURI().getPath();
+        if (path.length() > 5) {
+          cmd = path.substring(5);
+        } else {
+          cmd = "";
+        }
+      }
     }
 
     if (cmd == null || cmd.isEmpty()) {
