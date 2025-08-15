@@ -203,13 +203,16 @@ public void registerCommands(List<R2CommandHandler> commands) {
         return executeDotCommand(cmdStr);
       }
 
-      // Handle special case for quoted commands (')
+      // Handle special case for quoted commands (') and braced commands ({)
       if (cmdStr.startsWith("'")) {
-        // Check if it's a temporary seek with '0x syntax
+        // Check if it's a temporary seek with '0x' syntax
         if (cmdStr.startsWith("'0x")) {
           return executeTemporarySeekCommand(cmdStr);
         }
         return executeQuotedCommand(cmdStr);
+      } else if (cmdStr.startsWith("{")) {
+        // Treat commands starting with '{' as literal/braced commands (no evaluation)
+        return executeBracedCommand(cmdStr);
       }
 
       // Parse the command
@@ -548,6 +551,92 @@ public void registerCommands(List<R2CommandHandler> commands) {
     return executeCommandWithHandler(cmd);
   }
 
+  /**
+   * Execute a command that starts with a brace '{'. This implements r2pipe's JSON
+   * braced command behavior. The expected JSON is: {"cmd":"...","json":false,"trim":true}
+   * If the input is "{?" the usage string is returned.
+   */
+  private String executeBracedCommand(String bracedStr) throws R2CommandException {
+    // Quick usage help: if the second char is '?' return usage (mimic r2pipe.c behavior)
+    if (bracedStr.length() > 1 && bracedStr.charAt(1) == '?') {
+      return "Usage: {\"cmd\":\"...\",\"json\":false,\"trim\":true} # `cmd` is required\n";
+    }
+
+    // Try to extract the JSON text. The input usually starts with '{' and may end with '}'.
+    String raw = bracedStr.trim();
+    String jsonText = raw;
+    // If there are extra characters after the last closing brace, trim them off
+    int lastBrace = raw.lastIndexOf('}');
+    if (lastBrace != -1) {
+      jsonText = raw.substring(0, lastBrace + 1);
+    }
+
+    // Parse JSON
+    org.json.JSONObject out = new org.json.JSONObject();
+    try {
+      org.json.JSONObject j = new org.json.JSONObject(jsonText);
+
+      // cmd is required
+      if (!j.has("cmd")) {
+        out.put("res", "");
+        out.put("error", true);
+        out.put("value", 0);
+        out.put("code", context.getLastErrorCode());
+        return out.toString() + "\n";
+      }
+
+      String r_cmd = j.getString("cmd");
+      boolean is_json = j.optBoolean("json", false);
+      boolean is_trim = j.has("trim") ? j.optBoolean("trim", true) : true; // default true
+
+      // Execute the command
+      String res = executeCommand(r_cmd);
+
+      if (res == null) {
+        out.put("res", "");
+        out.put("error", true);
+        out.put("value", 0);
+        out.put("code", context.getLastErrorCode());
+        return out.toString() + "\n";
+      }
+
+      // Trim when requested or when json output is requested
+      if (is_trim || is_json) {
+        res = res.trim();
+      }
+
+      // If json flag is set, try to parse the command output as JSON and embed raw
+      if (is_json) {
+        try {
+          // Try object/array parsing
+          org.json.JSONTokener tok = new org.json.JSONTokener(res);
+          Object parsed = tok.nextValue();
+          out.put("res", parsed);
+        } catch (Exception e) {
+          // If parsing fails, fall back to raw string
+          out.put("res", res);
+        }
+      } else {
+        out.put("res", res);
+      }
+
+      out.put("error", false);
+      // r2 returns the numeric evaluation value (core->num->value). We don't have that global
+      // value here, so return 0 for now.
+      out.put("value", 0);
+      out.put("code", context.getLastErrorCode());
+
+      return out.toString() + "\n";
+    } catch (org.json.JSONException je) {
+      // Invalid JSON input - return error structure
+      out.put("res", "");
+      out.put("error", true);
+      out.put("value", 0);
+      out.put("code", context.getLastErrorCode());
+      return out.toString() + "\n";
+    }
+  }
+
   /** Find and execute the appropriate handler for a parsed command */
   private String executeCommandWithHandler(R2Command cmd) throws R2CommandException {
     String prefix = cmd.getPrefix();
@@ -572,8 +661,8 @@ public void registerCommands(List<R2CommandHandler> commands) {
       return cmdStr;
     }
 
-    // If the command starts with a single quote, don't process comments
-    if (cmdStr.startsWith("'")) {
+    // If the command starts with a single quote or a brace, don't process comments
+    if (cmdStr.startsWith("'") || cmdStr.startsWith("{")) {
       return cmdStr;
     }
 
@@ -719,7 +808,7 @@ public void registerCommands(List<R2CommandHandler> commands) {
       // Special case: if we see a single quote at the beginning of a command segment,
       // anything after that within this segment will be treated as a literal (no semicolon
       // splitting)
-      if (i == lastSplitPos && c == '\'') {
+      if (i == lastSplitPos && (c == '\'' || c == '{')) {
         // Find the next semicolon outside of any quotes (to find the end of this command)
         int nextSemicolon = findUnquotedChar(cmdStr.substring(i), ';');
         if (nextSemicolon == -1) {
