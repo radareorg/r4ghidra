@@ -1,9 +1,15 @@
 package r4ghidra.repl;
 
+import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.MalformedInputException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import r4ghidra.repl.handlers.R2BlocksizeCommandHandler;
@@ -37,10 +43,38 @@ public class R4GhidraHttpHandler implements HttpHandler {
 
   @Override
   public void handle(HttpExchange exchange) throws IOException {
-    // Extract command from query string or path
-    String cmd = exchange.getRequestURI().getQuery();
-    if (cmd == null) {
-      cmd = exchange.getRequestURI().getPath().substring(5);
+    // Support POST requests (body contains the command) and fallback to GET/query/path
+    String method = exchange.getRequestMethod();
+    String cmd = null;
+
+    if ("POST".equalsIgnoreCase(method)) {
+      // Read the entire request body as the command (assume UTF-8)
+      java.io.InputStream is = exchange.getRequestBody();
+      try {
+        byte[] body = is.readAllBytes();
+        CharsetDecoder charsetDecoder = StandardCharsets.UTF_8.newDecoder();
+        CharBuffer decodedCharBuffer = charsetDecoder.decode(ByteBuffer.wrap(body));
+        cmd = decodedCharBuffer.toString().trim();
+      } catch(MalformedInputException mie){
+        sendErrorResponse(400, exchange, "Invalid UTF-8 encoding!".getBytes());
+        return;
+      }finally {
+        is.close();
+      }
+    } else if ("GET".equalsIgnoreCase(method)){
+      // Extract command from query string or path (existing behavior)
+      cmd = exchange.getRequestURI().getQuery();
+      if (cmd == null) {
+        String path = exchange.getRequestURI().getPath();
+        if (path.length() > 5) {
+          cmd = path.substring(5);
+        } else {
+          cmd = "";
+        }
+      }
+    } else {
+      sendErrorResponse(400, exchange, "Invalid request".getBytes());
+      return;
     }
 
     if (cmd == null || cmd.isEmpty()) {
@@ -58,8 +92,14 @@ public class R4GhidraHttpHandler implements HttpHandler {
     }
   }
 
+  private void setResponseHeaders(HttpExchange exchange){
+    Headers headers=exchange.getResponseHeaders();
+    headers.add("Accept-Charset","UTF-8");
+    headers.add("Accept-Encoding","identity");
+  }
   /** Send a successful response */
   private void sendResponse(HttpExchange exchange, byte[] response) throws IOException {
+    setResponseHeaders(exchange);
     exchange.sendResponseHeaders(200, response.length);
     OutputStream os = exchange.getResponseBody();
     os.write(response);
@@ -69,6 +109,7 @@ public class R4GhidraHttpHandler implements HttpHandler {
   /** Send an error response */
   private void sendErrorResponse(int status, HttpExchange exchange, byte[] response)
       throws IOException {
+    setResponseHeaders(exchange);
     exchange.sendResponseHeaders(status, response.length);
     OutputStream os = exchange.getResponseBody();
     os.write(response);
