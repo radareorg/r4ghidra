@@ -2,6 +2,8 @@ package r4ghidra.repl;
 
 import ghidra.program.model.address.Address;
 import java.util.ArrayList;
+
+import org.json.JSONException;
 import r4ghidra.repl.R2CommandHandler;
 import r4ghidra.repl.handlers.R2HelpCommandHandler;
 import java.util.HashMap;
@@ -612,8 +614,7 @@ public void registerCommands(List<R2CommandHandler> commands) {
           org.json.JSONTokener tok = new org.json.JSONTokener(res);
           Object parsed = tok.nextValue();
           out.put("res", parsed);
-        } catch (Exception e) {
-          // If parsing fails, fall back to raw string
+        } catch (JSONException e) { // If parsing fails, fall back to raw string
           out.put("res", res);
         }
       } else {
@@ -627,7 +628,7 @@ public void registerCommands(List<R2CommandHandler> commands) {
       out.put("code", context.getLastErrorCode());
 
       return out.toString() + "\n";
-    } catch (org.json.JSONException je) {
+    } catch (JSONException je) {
       // Invalid JSON input - return error structure
       out.put("res", "");
       out.put("error", true);
