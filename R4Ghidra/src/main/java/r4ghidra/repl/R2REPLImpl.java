@@ -596,6 +596,10 @@ public void registerCommands(List<R2CommandHandler> commands) {
       // Execute the command
       String res = executeCommand(r_cmd);
 
+      if (res.startsWith("Error:")){
+        throw new JSONException(res);
+      }
+
       if (res == null) {
         out.put("res", "");
         out.put("error", true);
