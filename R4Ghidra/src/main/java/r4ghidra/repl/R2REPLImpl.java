@@ -3,7 +3,9 @@ package r4ghidra.repl;
 import ghidra.program.model.address.Address;
 import java.util.ArrayList;
 
+import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 import r4ghidra.repl.R2CommandHandler;
 import r4ghidra.repl.handlers.R2HelpCommandHandler;
 import java.util.HashMap;
@@ -574,9 +576,9 @@ public void registerCommands(List<R2CommandHandler> commands) {
     }
 
     // Parse JSON
-    org.json.JSONObject out = new org.json.JSONObject();
+    JSONObject out = new JSONObject();
     try {
-      org.json.JSONObject j = new org.json.JSONObject(jsonText);
+      JSONObject j = new JSONObject(jsonText);
 
       // cmd is required
       if (!j.has("cmd")) {
@@ -589,7 +591,7 @@ public void registerCommands(List<R2CommandHandler> commands) {
 
       String r_cmd = j.getString("cmd");
       boolean is_json = j.optBoolean("json", false);
-      boolean is_trim = j.has("trim") ? j.optBoolean("trim", true) : true; // default true
+      boolean is_trim = !j.has("trim") || j.optBoolean("trim", true); // default true
 
       // Execute the command
       String res = executeCommand(r_cmd);
@@ -609,13 +611,16 @@ public void registerCommands(List<R2CommandHandler> commands) {
 
       // If json flag is set, try to parse the command output as JSON and embed raw
       if (is_json) {
-        try {
-          // Try object/array parsing
-          org.json.JSONTokener tok = new org.json.JSONTokener(res);
-          Object parsed = tok.nextValue();
-          out.put("res", parsed);
-        } catch (JSONException e) { // If parsing fails, fall back to raw string
-          out.put("res", res);
+        // Try object/array parsing
+        // In case of error we rely on the outer JSONException handler
+        if (res.startsWith("{")) {
+          JSONObject resJsonObj = new JSONObject(res);
+          out.put("res", resJsonObj);
+        } else if (res.startsWith("[")) {
+          JSONArray resJsonObj = new JSONArray(res);
+          out.put("res", resJsonObj);
+        } else {
+          throw new JSONException("Can't determine JSON response type");
         }
       } else {
         out.put("res", res);
@@ -630,7 +635,7 @@ public void registerCommands(List<R2CommandHandler> commands) {
       return out.toString() + "\n";
     } catch (JSONException je) {
       // Invalid JSON input - return error structure
-      out.put("res", "");
+      out.put("res", je.getMessage());
       out.put("error", true);
       out.put("value", 0);
       out.put("code", context.getLastErrorCode());
