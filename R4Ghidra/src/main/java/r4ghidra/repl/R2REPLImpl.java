@@ -209,7 +209,7 @@ public void registerCommands(List<R2CommandHandler> commands) {
 
       // Handle special case for quoted commands (') and braced commands ({)
       if (cmdStr.startsWith("'")) {
-        // Check if it's a temporary seek with '0x' syntax
+        // Check if it's a temporary seek with "'0x" syntax
         if (cmdStr.startsWith("'0x")) {
           return executeTemporarySeekCommand(cmdStr);
         }
