@@ -2,6 +2,10 @@ package r4ghidra.repl;
 
 import ghidra.program.model.address.Address;
 import java.util.ArrayList;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import r4ghidra.repl.R2CommandHandler;
 import r4ghidra.repl.handlers.R2HelpCommandHandler;
 import java.util.HashMap;
@@ -203,13 +207,16 @@ public void registerCommands(List<R2CommandHandler> commands) {
         return executeDotCommand(cmdStr);
       }
 
-      // Handle special case for quoted commands (')
+      // Handle special case for quoted commands (') and braced commands ({)
       if (cmdStr.startsWith("'")) {
-        // Check if it's a temporary seek with '0x syntax
+        // Check if it's a temporary seek with "'0x" syntax
         if (cmdStr.startsWith("'0x")) {
           return executeTemporarySeekCommand(cmdStr);
         }
         return executeQuotedCommand(cmdStr);
+      } else if (cmdStr.startsWith("{")) {
+        // Treat commands starting with '{' as literal/braced commands (no evaluation)
+        return executeBracedCommand(cmdStr);
       }
 
       // Parse the command
@@ -548,6 +555,98 @@ public void registerCommands(List<R2CommandHandler> commands) {
     return executeCommandWithHandler(cmd);
   }
 
+  /**
+   * Execute a command that starts with a brace '{'. This implements r2pipe's JSON
+   * braced command behavior. The expected JSON is: {"cmd":"...","json":false,"trim":true}
+   * If the input is "{?" the usage string is returned.
+   */
+  private String executeBracedCommand(String bracedStr) throws R2CommandException {
+    // Quick usage help: if the second char is '?' return usage (mimic r2pipe.c behavior)
+    if (bracedStr.length() > 1 && bracedStr.charAt(1) == '?') {
+      return "Usage: {\"cmd\":\"...\",\"json\":false,\"trim\":true} # `cmd` is required\n";
+    }
+
+    // Try to extract the JSON text. The input usually starts with '{' and may end with '}'.
+    String raw = bracedStr.trim();
+    String jsonText = raw;
+    // If there are extra characters after the last closing brace, trim them off
+    int lastBrace = raw.lastIndexOf('}');
+    if (lastBrace != -1) {
+      jsonText = raw.substring(0, lastBrace + 1);
+    }
+
+    // Parse JSON
+    JSONObject out = new JSONObject();
+    try {
+      JSONObject j = new JSONObject(jsonText);
+
+      // cmd is required
+      if (!j.has("cmd")) {
+        out.put("res", "");
+        out.put("error", true);
+        out.put("value", 0);
+        out.put("code", context.getLastErrorCode());
+        return out.toString() + "\n";
+      }
+
+      String r_cmd = j.getString("cmd");
+      boolean is_json = j.optBoolean("json", false);
+      boolean is_trim = !j.has("trim") || j.optBoolean("trim", true); // default true
+
+      // Execute the command
+      String res = executeCommand(r_cmd);
+
+      if (res.startsWith("Error:")){
+        throw new JSONException(res);
+      }
+
+      if (res == null) {
+        out.put("res", "");
+        out.put("error", true);
+        out.put("value", 0);
+        out.put("code", context.getLastErrorCode());
+        return out.toString() + "\n";
+      }
+
+      // Trim when requested or when json output is requested
+      if (is_trim || is_json) {
+        res = res.trim();
+      }
+
+      // If json flag is set, try to parse the command output as JSON and embed raw
+      if (is_json) {
+        // Try object/array parsing
+        // In case of error we rely on the outer JSONException handler
+        if (res.startsWith("{")) {
+          JSONObject resJsonObj = new JSONObject(res);
+          out.put("res", resJsonObj);
+        } else if (res.startsWith("[")) {
+          JSONArray resJsonObj = new JSONArray(res);
+          out.put("res", resJsonObj);
+        } else {
+          throw new JSONException("Can't determine JSON response type");
+        }
+      } else {
+        out.put("res", res);
+      }
+
+      out.put("error", false);
+      // r2 returns the numeric evaluation value (core->num->value). We don't have that global
+      // value here, so return 0 for now.
+      out.put("value", 0);
+      out.put("code", context.getLastErrorCode());
+
+      return out.toString() + "\n";
+    } catch (JSONException je) {
+      // Invalid JSON input - return error structure
+      out.put("res", je.getMessage());
+      out.put("error", true);
+      out.put("value", 0);
+      out.put("code", context.getLastErrorCode());
+      return out.toString() + "\n";
+    }
+  }
+
   /** Find and execute the appropriate handler for a parsed command */
   private String executeCommandWithHandler(R2Command cmd) throws R2CommandException {
     String prefix = cmd.getPrefix();
@@ -572,8 +671,8 @@ public void registerCommands(List<R2CommandHandler> commands) {
       return cmdStr;
     }
 
-    // If the command starts with a single quote, don't process comments
-    if (cmdStr.startsWith("'")) {
+    // If the command starts with a single quote or a brace, don't process comments
+    if (cmdStr.startsWith("'") || cmdStr.startsWith("{")) {
       return cmdStr;
     }
 
@@ -719,7 +818,7 @@ public void registerCommands(List<R2CommandHandler> commands) {
       // Special case: if we see a single quote at the beginning of a command segment,
       // anything after that within this segment will be treated as a literal (no semicolon
       // splitting)
-      if (i == lastSplitPos && c == '\'') {
+      if (i == lastSplitPos && (c == '\'' || c == '{')) {
         // Find the next semicolon outside of any quotes (to find the end of this command)
         int nextSemicolon = findUnquotedChar(cmdStr.substring(i), ';');
         if (nextSemicolon == -1) {
