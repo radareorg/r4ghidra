@@ -12,6 +12,8 @@ import r4ghidra.repl.R2Context;
 import r4ghidra.repl.num.R2NumException;
 import r4ghidra.repl.num.R2NumUtil;
 
+import java.util.List;
+
 /** Handler for the 's' (seek) command */
 public class R2SeekCommandHandler implements R2CommandHandler {
 
@@ -77,38 +79,32 @@ public String execute(R2Command command, R2Context context) throws R2CommandExce
 
 		// 'sf' - seek to start of function at current offset (no arguments), or forward by bytes if
 		// arg supplied
-	case "f":
-		{
+	case "f": {
 		// If no argument, seek to function start
 		if (command.getArgumentCount() == 0) {
 			Address current = context.getCurrentAddress();
 			if (current == null) {
-			throw new R2CommandException("Current address is not set");
+				throw new R2CommandException("Current address is not set");
 			}
 			Function func = context.getAPI().getFunctionContaining(current);
 			if (func == null) {
-			throw new R2CommandException("No function found at current address");
+				throw new R2CommandException("No function found at current address");
 			}
 			Address entry = func.getEntryPoint();
 			seekTo(context, entry);
 			return formatResult(entry, context, command);
-		}
-		// Fallback: seek forward by delta bytes
-		try {
-			String offsetStr = command.getFirstArgument("1");
-			long offset = R2NumUtil.evaluateExpression(context, offsetStr);
-			if (offset <= 0) {
-			offset = 1;
+		} else {
+			String nameStr = command.getFirstArgument("main");
+			List<Function> functions = context.getAPI().getGlobalFunctions(nameStr);
+			if (!functions.isEmpty()) {
+				Address entry = functions.getFirst().getEntryPoint();
+				seekTo(context, entry);
+				return formatResult(entry, context, command);
+			} else {
+				throw new R2CommandException("No function with the given name");
 			}
-			Address newAddr = context.getCurrentAddress().add(offset);
-			seekTo(context, newAddr);
-			return formatResult(newAddr, context, command);
-		} catch (R2NumException e) {
-			throw new R2CommandException("Invalid offset expression: " + e.getMessage());
-		} catch (Exception e) {
-			throw new R2CommandException("Invalid offset for 'sf' command: " + e.getMessage());
 		}
-		}
+	}
 
 		// 's-' - seek to previous location
 	case "-":
