@@ -40,15 +40,14 @@ public class R4GhidraServer {
   /**
    * Start the HTTP server on the specified port
    *
-   * @param plugin The R4Ghidra plugin instance that provides command handling
    * @param port The port number to listen on
    * @throws IOException If an error occurs while starting the server
    */
-  public static void start(R4GhidraPlugin plugin, int port) throws IOException {
+  public static void start(int port) throws IOException {
     stop();
     server = HttpServer.create(new InetSocketAddress(port), 0);
     server.createContext("/", new MyRootHandler());
-    server.createContext("/cmd", new R4GhidraHttpHandler(plugin));
+    server.createContext("/cmd", new R4GhidraHttpHandler());
     server.setExecutor(null); // creates a default executor
     server.start();
   }

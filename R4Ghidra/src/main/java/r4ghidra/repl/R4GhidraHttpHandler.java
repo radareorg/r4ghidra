@@ -10,17 +10,7 @@ import java.nio.CharBuffer;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.MalformedInputException;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
 import java.util.Map;
-import r4ghidra.repl.handlers.R2BlocksizeCommandHandler;
-import r4ghidra.repl.handlers.R2EnvCommandHandler;
-import r4ghidra.repl.handlers.R2EvalCommandHandler;
-import r4ghidra.repl.handlers.R2HelpCommandHandler;
-import r4ghidra.repl.handlers.R2JsCommandHandler;
-import r4ghidra.repl.handlers.R2PrintCommandHandler;
-import r4ghidra.repl.handlers.R2SeekCommandHandler;
-import r4ghidra.repl.handlers.R2ShellCommandHandler;
-import r4ghidra.R4GhidraPlugin;
 
 /** HTTP handler that processes radare2 commands using the new REPL implementation */
 public class R4GhidraHttpHandler implements HttpHandler {
@@ -34,11 +24,17 @@ public class R4GhidraHttpHandler implements HttpHandler {
    *
    * @param plugin The R4Ghidra plugin instance that provides command handlers
    */
-  public R4GhidraHttpHandler(R4GhidraPlugin plugin) {
+  /*public R4GhidraHttpHandler(R4GhidraPlugin plugin) {
     commandRegistry = new HashMap<>();
 
     repl = new R2REPLImpl();
     repl.registerCommands (plugin.getCommandHandlers());
+  }*/
+
+  public R4GhidraHttpHandler(){
+
+    repl = new R2REPLImpl();
+    repl.registerCommands (R4CommandInitializer.getCommandHandlers());
   }
 
   @Override
