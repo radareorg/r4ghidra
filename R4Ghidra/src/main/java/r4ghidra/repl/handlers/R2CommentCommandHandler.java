@@ -2,6 +2,7 @@ package r4ghidra.repl.handlers;
 
 import ghidra.program.model.address.Address;
 // import ghidra.program.model.listing.CommentType; // Replaced with CommentTypeAdapter
+//import ghidra.program.model.listing.CommentType;
 import ghidra.program.model.listing.Listing;
 import ghidra.program.model.listing.Program;
 import java.util.Base64;
@@ -48,37 +49,36 @@ private String executeCCuCommand(R2Command command, R2Context context) throws R2
 		command.hasTemporaryAddress() ? command.getTemporaryAddress() : context.getCurrentAddress();
 
 	if (address == null) {
-	throw new R2CommandException("Current address is not set");
+		throw new R2CommandException("Current address is not set");
 	}
 
 	// Check if we have a comment text
 	if (command.getArgumentCount() < 1) {
-	throw new R2CommandException("No comment text provided. Usage: CCu [comment] @ addr");
+		throw new R2CommandException("No comment text provided. Usage: CCu [comment] @ addr");
 	}
 
 	// Get the comment text (combine all arguments)
 	StringBuilder commentText = new StringBuilder();
 	for (int i = 0; i < command.getArgumentCount(); i++) {
-	if (i > 0) {
-		commentText.append(" ");
-	}
-	commentText.append(command.getArgument(i, ""));
+		if (i > 0) {
+			commentText.append(" ");
+		}
+		commentText.append(command.getArgument(i, ""));
 	}
 
 	String comment = commentText.toString();
 
 	// Check for base64: prefix
 	if (comment.startsWith("base64:")) {
-	try {
-		String base64Content = comment.substring("base64:".length());
-		byte[] decodedBytes = Base64.getDecoder().decode(base64Content);
-		comment = new String(decodedBytes);
-	} catch (IllegalArgumentException e) {
-		throw new R2CommandException("Invalid base64 content: " + e.getMessage());
-	}
+		try {
+			String base64Content = comment.substring("base64:".length());
+			byte[] decodedBytes = Base64.getDecoder().decode(base64Content);
+			comment = new String(decodedBytes);
+		} catch (IllegalArgumentException e) {
+			throw new R2CommandException("Invalid base64 content: " + e.getMessage());
+		}
 	}
 
-	try {
 	// Get the current program
 	Program program = context.getAPI().getCurrentProgram();
 	if (program == null) {
@@ -89,22 +89,13 @@ private String executeCCuCommand(R2Command command, R2Context context) throws R2
 	Listing listing = program.getListing();
 	int transactionID = program.startTransaction("Set Comment");
 
-	try {
-		// Set the EOL (End of Line) comment at the specified address
-		// Unique comment means removing any existing comments first
-		int commentType = CommentTypeAdapter.EOL;
-		Object commentTypeObj = CommentTypeAdapter.getCommentType(commentType);
-		listing.setComment(address, commentType, null); // Clear existing comment
-		listing.setComment(address, commentType, comment);
+	// Set the EOL (End of Line) comment at the specified address
+	// Unique comment means removing any existing comments first
+	listing.setComment(address, 0, null); // Clear existing comment
+	listing.setComment(address, 0, comment);
 
-		return "Comment set at " + context.formatAddress(address);
-	} finally {
-		// Always end the transaction
-		program.endTransaction(transactionID, true);
-	}
-	} catch (Exception e) {
-	throw new R2CommandException("Error setting comment: " + e.getMessage());
-	}
+	program.endTransaction(transactionID, true);
+	return context.formatAddress(address);
 }
 
 @Override

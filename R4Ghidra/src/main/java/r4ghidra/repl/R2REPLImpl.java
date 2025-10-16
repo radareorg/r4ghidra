@@ -247,17 +247,26 @@ public void registerCommands(List<R2CommandHandler> commands) {
         context.setCurrentAddress(cmd.getTemporaryAddress());
       }
 
+      R2CommandException cmdException=null;
+      String result = null;
       // Find and execute the handler
-      String result = executeCommandWithHandler(cmd);
-
+      try {
+        result = executeCommandWithHandler(cmd);
+      }catch(R2CommandException r2e){
+        cmdException=r2e;
+      }
       // Restore original seek position if we had a temporary seek
       if (cmd.hasTemporaryAddress()
           && context.getCurrentAddress().equals(cmd.getTemporaryAddress())) {
         context.setCurrentAddress(originalSeek);
       }
-
-      return result;
+      if (cmdException != null){
+        throw cmdException;
+      }else{
+        return result;
+      }
     } catch (R2CommandException e) {
+
       return "Error: " + e.getMessage();
     }
   }
