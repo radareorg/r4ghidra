@@ -86,7 +86,7 @@ private String executeP8Command(R2Command command, R2Context context) throws R2C
 
 	// Format output based on suffix
 	if (command.hasSuffix('j')) {
-		return formatP8Json(bytes);
+		return formatBytesJson(bytes);
 	} else {
 		return formatP8Text(bytes);
 	}
@@ -105,7 +105,7 @@ private String formatP8Text(byte[] bytes) {
 }
 
 /** Format bytes as a JSON array */
-private String formatP8Json(byte[] bytes) {
+private String formatBytesJson(byte[] bytes) {
 	JSONArray array = new JSONArray();
 	for (byte b : bytes) {
 	array.put(b & 0xFF);
@@ -136,7 +136,7 @@ private String executeP8fCommand(R2Command command, R2Context context) throws R2
 
 	// Format output based on suffix
 	if (command.hasSuffix('j')) {
-		return formatP8Json(bytes);
+		return formatBytesJson(bytes);
 	} else {
 		return formatP8Text(bytes);
 	}
@@ -332,7 +332,7 @@ private String executePxCommand(R2Command command, R2Context context) throws R2C
 	try {
 	byte[] bytes = context.getAPI().getBytes(baseAddr, count);
 	if (command.hasSuffix('j')) {
-		return formatPxJson(bytes, baseAddr, context);
+		return formatBytesJson(bytes);
 	}
 	return formatPxText(bytes, baseAddr, context);
 	} catch (Exception e) {
@@ -362,7 +362,7 @@ private String executePxfCommand(R2Command command, R2Context context) throws R2
 	byte[] bytes = context.getAPI().getBytes(baseAddr, functionSize);
 
 	if (command.hasSuffix('j')) {
-		return formatPxJson(bytes, baseAddr, context);
+		return formatBytesJson(bytes);
 	}
 	return formatPxText(bytes, baseAddr, context);
 	} catch (Exception e) {
@@ -517,30 +517,6 @@ private String executePdfCommand(R2Command command, R2Context context) throws R2
 	} catch (Exception e) {
 	throw new R2CommandException("Error disassembling function: " + e.getMessage());
 	}
-}
-
-/** Format hexdump as JSON array of objects with address, bytes, and ascii */
-private String formatPxJson(byte[] bytes, Address baseAddr, R2Context context) {
-	JSONArray array = new JSONArray();
-	int lineSize = 16;
-	for (int offset = 0; offset < bytes.length; offset += lineSize) {
-	long addrOffset = baseAddr.getOffset() + offset;
-	JSONObject obj = new JSONObject();
-	obj.put("addr", addrOffset);
-	JSONArray data = new JSONArray();
-	int end = Math.min(offset + lineSize, bytes.length);
-	StringBuilder ascii = new StringBuilder();
-	for (int i = offset; i < end; i++) {
-		data.put(bytes[i] & 0xFF);
-		int b = bytes[i] & 0xFF;
-		char c = (b >= 32 && b < 127) ? (char) b : '.';
-		ascii.append(c);
-	}
-	obj.put("bytes", data);
-	obj.put("ascii", ascii.toString());
-	array.put(obj);
-	}
-	return array.toString() + "\n";
 }
 
 /** Class to hold disassembled instruction data */

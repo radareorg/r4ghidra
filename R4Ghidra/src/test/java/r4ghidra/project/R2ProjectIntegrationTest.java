@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import org.json.JSONArray;
 import r4ghidra.R4GhidraState;
 import r4ghidra.project.R2Project.*;
 import r4ghidra.repl.*;
@@ -80,6 +81,7 @@ public class R2ProjectIntegrationTest {
       check(
           program.getReferenceManager().getReferencesFrom(base.add(0x20)).length == 1,
           "rebased reference");
+      testHexdumpJson(program, repl, base);
       check(repl.executeCommand("prj?").contains("prj save"), "multi-character help");
       check(repl.executeCommand("? prj").contains("prj save"), "help lookup");
       check(repl.executeCommand("prj load").contains("Usage:"), "missing path");
@@ -173,6 +175,29 @@ public class R2ProjectIntegrationTest {
     } finally {
       program.release(consumer);
     }
+  }
+
+  private static void testHexdumpJson(ProgramDB program, R2REPLImpl repl, Address base)
+      throws Exception {
+    byte[] bytes = {
+      0, 1, 127, (byte) 128, (byte) 255, 16, 32, 48, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74
+    };
+    int tx = program.startTransaction("JSON hexdump fixture");
+    try {
+      program.getMemory().setBytes(base.add(0x80), bytes);
+    } finally {
+      program.endTransaction(tx, true);
+    }
+    List<Integer> expected =
+        List.of(0, 1, 127, 128, 255, 16, 32, 48, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74);
+    for (String command : List.of("pxj 19 @0x2080", "xj 19 @0x2080", "p8j 19 @0x2080")) {
+      String output = repl.executeCommand(command);
+      check(new JSONArray(output).toList().equals(expected), command + " byte array: " + output);
+    }
+    String output = repl.executeCommand("pxfj @0x2020");
+    check(
+        new JSONArray(output).toList().equals(List.of(144, 144, 144, 144, 144, 144, 144, 144)),
+        "pxfj byte array: " + output);
   }
 
   private static void testNativeImport(Language language, byte[] data) throws Exception {
