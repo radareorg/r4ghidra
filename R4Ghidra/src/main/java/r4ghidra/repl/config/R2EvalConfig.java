@@ -54,7 +54,7 @@ private void initDefaults() {
 	set("cfg.bigendian", "false", false);
 	set("cfg.endian", "little", false);
 	set("cfg.sandbox", "true", false);
-	set("cfg.sandbox.grain", "rw", false);
+	set("cfg.sandbox.grain", "none", false);
 
 	// Screen settings
 	set("scr.color", "1", false);
@@ -177,12 +177,14 @@ public boolean set(String key, boolean value) {
 */
 public boolean set(String key, String value, boolean triggerListeners) {
 	// Normalize key
-	key = key.trim().toLowerCase();
+	key = normalizeKey(key);
 
 	// If configuration is locked and this is a new key, deny the operation
 	if (locked && !config.containsKey(key)) {
 	return false; // Configuration is locked, can't create new keys
 	}
+	// Sandbox validation must also apply when listeners are suppressed by API callers.
+	value = context.configureSandbox(key, value);
 	// Check if the value is actually changing
 	String oldValue = config.get(key);
 	if (value.equals(oldValue)) {
@@ -207,7 +209,7 @@ public boolean set(String key, String value, boolean triggerListeners) {
 * @return The value, or empty string if not found
 */
 public String get(String key) {
-	return config.getOrDefault(key.trim().toLowerCase(), "");
+	return config.getOrDefault(normalizeKey(key), "");
 }
 
 /**
@@ -217,7 +219,12 @@ public String get(String key) {
 * @return true if the variable exists, false otherwise
 */
 public boolean contains(String key) {
-	return config.containsKey(key.trim().toLowerCase());
+	return config.containsKey(normalizeKey(key));
+}
+
+private static String normalizeKey(String key) {
+	String normalized = key.trim().toLowerCase(java.util.Locale.ROOT);
+	return normalized.equals("sandbox.grain") ? "cfg.sandbox.grain" : normalized;
 }
 
 /**

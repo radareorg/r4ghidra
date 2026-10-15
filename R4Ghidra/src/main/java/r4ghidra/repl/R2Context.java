@@ -11,6 +11,7 @@ import r4ghidra.repl.config.R2EvalChangeListener;
 import r4ghidra.repl.config.R2EvalConfig;
 import r4ghidra.repl.filesystem.R2FileSystem;
 import r4ghidra.repl.filesystem.R2SandboxedFileSystem;
+import r4ghidra.repl.sandbox.R2Sandbox;
 import r4ghidra.R4GhidraState;
 
 /**
@@ -23,19 +24,23 @@ import r4ghidra.R4GhidraState;
 public class R2Context {
   // Sandbox permission flags
   /** No sandbox restrictions */
-  public static final int R_SANDBOX_GRAIN_NONE = 0;
+  public static final int R_SANDBOX_GRAIN_NONE = R2Sandbox.NONE;
   /** Restrict socket operations */
-  public static final int R_SANDBOX_GRAIN_SOCKET = 1;
+  public static final int R_SANDBOX_GRAIN_SOCKET = R2Sandbox.SOCKET;
   /** Restrict disk access operations */
-  public static final int R_SANDBOX_GRAIN_DISK = 2;
+  public static final int R_SANDBOX_GRAIN_DISK = R2Sandbox.DISK;
   /** Restrict file operations */
-  public static final int R_SANDBOX_GRAIN_FILES = 4;
+  public static final int R_SANDBOX_GRAIN_FILES = R2Sandbox.FILES;
   /** Restrict command execution */
-  public static final int R_SANDBOX_GRAIN_EXEC = 8;
+  public static final int R_SANDBOX_GRAIN_EXEC = R2Sandbox.EXEC;
   /** Restrict environment variable access */
-  public static final int R_SANDBOX_GRAIN_ENVIRON = 16;
+  public static final int R_SANDBOX_GRAIN_ENVIRON = R2Sandbox.ENVIRON;
+  /** Restrict non-local network access */
+  public static final int R_SANDBOX_GRAIN_NETWORK = R2Sandbox.NETWORK;
+  /** Restrict access to hidden files and directories */
+  public static final int R_SANDBOX_GRAIN_HIDDEN = R2Sandbox.HIDDEN;
   /** Apply all sandbox restrictions */
-  public static final int R_SANDBOX_GRAIN_ALL = 16 | 8 | 4 | 2 | 1;
+  public static final int R_SANDBOX_GRAIN_ALL = R2Sandbox.ALL;
 
 
   // Current address (seek)
@@ -59,7 +64,7 @@ public class R2Context {
   private R2EvalConfig evalConfig;
 
   // Sandbox permissions
-  private int sandboxFlags;
+  private final R2Sandbox sandbox = new R2Sandbox();
 
   // File system abstraction
   private R2FileSystem fileSystem;
@@ -105,9 +110,6 @@ public class R2Context {
     // Only plugins and extensions should be able to create new keys
     this.evalConfig.lock();
 
-    // By default, enable all sandbox restrictions
-    this.sandboxFlags = R_SANDBOX_GRAIN_ALL;
-
     // Initialize the file system with sandbox restrictions
     this.fileSystem = new R2SandboxedFileSystem(this);
   }
@@ -121,13 +123,6 @@ public class R2Context {
 
   /** Set up listeners for configuration variables */
   private void setupConfigListeners() {
-    evalConfig.registerListener(
-        "cfg.sandbox",
-        (key, oldValue, newValue) ->
-            setSandboxFlags(
-                newValue.equals("true") || newValue.equals("1")
-                    ? R_SANDBOX_GRAIN_ALL : R_SANDBOX_GRAIN_NONE));
-
     // Listen for asm.bits changes
     evalConfig.registerListener(
         "asm.bits",
@@ -401,7 +396,7 @@ public class R2Context {
    * @return The sandbox flags as a bitmask
    */
   public int getSandboxFlags() {
-    return sandboxFlags;
+    return sandbox.isEnabled() ? R_SANDBOX_GRAIN_ALL & ~sandbox.getGrains() : 0;
   }
 
   /**
@@ -410,8 +405,11 @@ public class R2Context {
    * @param flags The sandbox flags as a bitmask
    */
   public void setSandboxFlags(int flags) {
-    this.sandboxFlags = flags;
-    evalConfig.set("cfg.sandbox", flags == R_SANDBOX_GRAIN_NONE ? "false" : "true", false);
+    if ((flags & ~R_SANDBOX_GRAIN_ALL) != 0) {
+      throw new IllegalArgumentException("Unknown sandbox restriction bits");
+    }
+    evalConfig.set("cfg.sandbox.grain", R2Sandbox.formatGrains(R_SANDBOX_GRAIN_ALL & ~flags));
+    evalConfig.set("cfg.sandbox", flags != R_SANDBOX_GRAIN_NONE);
   }
 
   /**
@@ -421,7 +419,39 @@ public class R2Context {
    * @return true if the restriction is enabled, false otherwise
    */
   public boolean isSandboxed(int flag) {
-    return (sandboxFlags & flag) != 0;
+    return sandbox.isRestricted(flag);
+  }
+
+  /** Validate and apply policy before eval values are stored, including UI and API changes. */
+  public String configureSandbox(String key, String value) {
+    if (key.equals("cfg.sandbox.grain")) {
+      int grains = R2Sandbox.parseGrains(value);
+      sandbox.setGrains(grains);
+      return R2Sandbox.formatGrains(grains);
+    }
+    if (key.equals("cfg.sandbox")) {
+      boolean enabled =
+          switch (value.trim().toLowerCase(Locale.ROOT)) {
+            case "true", "1", "yes", "on", "y" -> true;
+            case "false", "0", "no", "off", "n" -> false;
+            default -> throw new IllegalArgumentException("Invalid value for cfg.sandbox: " + value);
+          };
+      sandbox.setEnabled(enabled);
+      return Boolean.toString(enabled);
+    }
+    return value;
+  }
+
+  /** Prevent commands in this context from weakening the current sandbox policy. */
+  public void lockSandbox() {
+    evalConfig.set("cfg.sandbox", "true");
+    sandbox.lock();
+  }
+
+  public void requireSandboxPermission(int resources, String operation) throws R2CommandException {
+    if (isSandboxed(resources)) {
+      throw new R2CommandException(operation + " not allowed by sandbox settings");
+    }
   }
 
   /**

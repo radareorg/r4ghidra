@@ -82,6 +82,8 @@ public class R2ProjectIntegrationTest {
           program.getReferenceManager().getReferencesFrom(base.add(0x20)).length == 1,
           "rebased reference");
       testHexdumpJson(program, repl, base);
+      r4ghidra.repl.sandbox.R2SandboxIntegrationTest.run(
+          repl, Path.of(args[1]).getParent().resolve("sandbox"));
       check(repl.executeCommand("prj?").contains("prj save"), "multi-character help");
       check(repl.executeCommand("? prj").contains("prj save"), "help lookup");
       check(repl.executeCommand("prj load").contains("Usage:"), "missing path");

@@ -332,7 +332,32 @@ The R2REPL includes a filesystem abstraction with sandbox protection and support
 
 ### Sandbox Settings
 
-The sandbox settings are stored in the R2Context and control which filesystem operations are allowed. The following flags are available:
+`cfg.sandbox=true` enables the policy. `cfg.sandbox.grain` (alias `sandbox.grain`) lists allowed
+resources, with `none` as the default. Examples:
+
+```text
+e cfg.sandbox.grain=files           # Read files and directories
+e cfg.sandbox.grain=files,disk      # Also write, append and delete
+e cfg.sandbox.grain=files,hidden    # Also read hidden files and symlink targets
+e cfg.sandbox.grain=environ        # Access environment variables
+e cfg.sandbox.grain=exec           # Execute shell commands and external pipes
+e cfg.sandbox.grain=!disk,!exec     # Start from all, then remove these permissions
+e cfg.sandbox.grain=?              # Show help without changing the policy
+```
+
+`all` and `none` select all or no resources; `file` aliases `files`. Invalid expressions are
+rejected before updating the policy or configuration. The policy also applies to file existence,
+script loading, binary project import/export and redirection. `$` files are always available.
+JavaScript requires all permissions because its engine can access arbitrary Java APIs.
+Granting `exec` runs child processes with the host user's privileges. `socket` and `network` are
+reserved for future REPL network operations; the host controls HTTP server startup.
+
+Local users can disable the sandbox with `e cfg.sandbox=false`; re-enabling preserves the grain.
+The HTTP server binds to localhost and locks its separate context to prevent remote commands
+from disabling the sandbox or increasing permissions.
+
+For compatibility, the Java `setSandboxFlags` API continues to use a mask of **denied** resources,
+while the eval grain lists **allowed** resources. The flags are:
 
 ```java
 R_SANDBOX_GRAIN_NONE = 0     // No restrictions
@@ -341,7 +366,9 @@ R_SANDBOX_GRAIN_DISK = 2     // Restrict disk write operations
 R_SANDBOX_GRAIN_FILES = 4    // Restrict file read/write operations
 R_SANDBOX_GRAIN_EXEC = 8     // Restrict shell command execution
 R_SANDBOX_GRAIN_ENVIRON = 16 // Restrict environment variable access
-R_SANDBOX_GRAIN_ALL = 31     // All restrictions enabled
+R_SANDBOX_GRAIN_NETWORK = 32 // Restrict non-local network access
+R_SANDBOX_GRAIN_HIDDEN = 64  // Restrict hidden file and directory access
+R_SANDBOX_GRAIN_ALL = 127    // All supported restrictions enabled
 ```
 
 By default, all sandbox restrictions are enabled. To modify sandbox settings:

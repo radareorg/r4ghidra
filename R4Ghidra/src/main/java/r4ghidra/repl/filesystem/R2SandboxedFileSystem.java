@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.LinkOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -46,14 +47,7 @@ public String readFile(String path) throws IOException, R2FileSystemException {
 	return readMemoryFile(path);
 	}
 
-	// Check sandbox permissions for file read
-	if (context.isSandboxed(R2Context.R_SANDBOX_GRAIN_FILES)) {
-	throw new R2FileSystemException("File reading not allowed by sandbox settings");
-	}
-
-	// Proceed with regular file read
-	Path filePath = Paths.get(path);
-	return Files.readString(filePath);
+	return Files.readString(checkedPath(path, false));
 }
 
 @Override
@@ -65,10 +59,7 @@ public byte[] readBytes(String path) throws IOException, R2FileSystemException {
 		}
 		return memoryFiles.get(name).clone();
 	}
-	if (context.isSandboxed(R2Context.R_SANDBOX_GRAIN_FILES)) {
-		throw new R2FileSystemException("File reading not allowed by sandbox settings");
-	}
-	return Files.readAllBytes(Paths.get(path));
+	return Files.readAllBytes(checkedPath(path, false));
 }
 
 @Override
@@ -77,11 +68,7 @@ public void writeBytes(String path, byte[] content) throws IOException, R2FileSy
 		memoryFiles.put(getMemoryFileName(path), content.clone());
 		return;
 	}
-	if (context.isSandboxed(R2Context.R_SANDBOX_GRAIN_DISK)
-			|| context.isSandboxed(R2Context.R_SANDBOX_GRAIN_FILES)) {
-		throw new R2FileSystemException("File writing not allowed by sandbox settings");
-	}
-	Path filePath = Paths.get(path);
+	Path filePath = checkedPath(path, true);
 	if (filePath.getParent() != null) {
 		Files.createDirectories(filePath.getParent());
 	}
@@ -96,18 +83,7 @@ public void writeFile(String path, String content) throws IOException, R2FileSys
 	return;
 	}
 
-	// Check sandbox permissions for disk write
-	if (context.isSandboxed(R2Context.R_SANDBOX_GRAIN_DISK)) {
-	throw new R2FileSystemException("Disk writing not allowed by sandbox settings");
-	}
-
-	// Check sandbox permissions for file write
-	if (context.isSandboxed(R2Context.R_SANDBOX_GRAIN_FILES)) {
-	throw new R2FileSystemException("File writing not allowed by sandbox settings");
-	}
-
-	// Proceed with regular file write
-	Path filePath = Paths.get(path);
+	Path filePath = checkedPath(path, true);
 
 	// Create parent directories if needed
 	Path parent = filePath.getParent();
@@ -126,18 +102,7 @@ public void appendFile(String path, String content) throws IOException, R2FileSy
 	return;
 	}
 
-	// Check sandbox permissions for disk write
-	if (context.isSandboxed(R2Context.R_SANDBOX_GRAIN_DISK)) {
-	throw new R2FileSystemException("Disk writing not allowed by sandbox settings");
-	}
-
-	// Check sandbox permissions for file write
-	if (context.isSandboxed(R2Context.R_SANDBOX_GRAIN_FILES)) {
-	throw new R2FileSystemException("File writing not allowed by sandbox settings");
-	}
-
-	// Proceed with regular file append
-	Path filePath = Paths.get(path);
+	Path filePath = checkedPath(path, true);
 
 	// Create parent directories if needed
 	Path parent = filePath.getParent();
@@ -157,19 +122,7 @@ public void deleteFile(String path) throws IOException, R2FileSystemException {
 	return;
 	}
 
-	// Check sandbox permissions for disk write
-	if (context.isSandboxed(R2Context.R_SANDBOX_GRAIN_DISK)) {
-	throw new R2FileSystemException("Disk modifications not allowed by sandbox settings");
-	}
-
-	// Check sandbox permissions for file write
-	if (context.isSandboxed(R2Context.R_SANDBOX_GRAIN_FILES)) {
-	throw new R2FileSystemException("File deletion not allowed by sandbox settings");
-	}
-
-	// Proceed with regular file delete
-	Path filePath = Paths.get(path);
-	Files.delete(filePath);
+	Files.delete(checkedPath(path, true));
 }
 
 @Override
@@ -179,10 +132,11 @@ public boolean fileExists(String path) {
 	return memoryFiles.containsKey(getMemoryFileName(path));
 	}
 
-	// For real files, check even with sandbox restrictions
-	// (we're just checking, not actually accessing the file content)
-	Path filePath = Paths.get(path);
-	return Files.exists(filePath);
+	try {
+	return Files.exists(checkedPath(path, false));
+	} catch (IOException | R2FileSystemException e) {
+	return false;
+	}
 }
 
 @Override
@@ -192,16 +146,44 @@ public List<String> listFiles(String path) throws IOException, R2FileSystemExcep
 	return listMemoryFiles();
 	}
 
-	// Check sandbox permissions for file listing
-	if (context.isSandboxed(R2Context.R_SANDBOX_GRAIN_FILES)) {
-	throw new R2FileSystemException("File listing not allowed by sandbox settings");
-	}
-
-	// Proceed with regular directory listing
-	Path dirPath = Paths.get(path);
+	Path dirPath = checkedPath(path, false);
 
 	try (Stream<Path> stream = Files.list(dirPath)) {
-	return stream.map(Path::toString).collect(Collectors.toList());
+	return stream.filter(entry -> fileExists(entry.toString())).map(Path::toString).collect(Collectors.toList());
+	}
+}
+
+/** Apply one policy to text, binary, metadata and script access, including symlink targets. */
+private Path checkedPath(String path, boolean write) throws IOException, R2FileSystemException {
+	int resources = R2Context.R_SANDBOX_GRAIN_FILES;
+	if (write) {
+	resources |= R2Context.R_SANDBOX_GRAIN_DISK;
+	}
+	if (context.isSandboxed(resources)) {
+	throw new R2FileSystemException("File " + (write ? "writing" : "reading") + " not allowed by sandbox settings");
+	}
+	Path filePath = Paths.get(path);
+	if (context.isSandboxed(R2Context.R_SANDBOX_GRAIN_HIDDEN)) {
+	checkHiddenPath(filePath.toAbsolutePath());
+	// Resolve the nearest existing ancestor as well, so an innocent-looking symlink cannot
+	// expose a hidden target or create a new file inside a hidden directory.
+	Path ancestor = filePath.toAbsolutePath();
+	while (ancestor != null && !Files.exists(ancestor, LinkOption.NOFOLLOW_LINKS)) {
+	ancestor = ancestor.getParent();
+	}
+	if (ancestor != null) {
+	checkHiddenPath(ancestor.toRealPath());
+	}
+	}
+	return filePath;
+}
+
+private void checkHiddenPath(Path path) throws R2FileSystemException {
+	for (Path component : path) {
+	String name = component.toString();
+	if (name.startsWith(".") && !name.equals(".") && !name.equals("..")) {
+	throw new R2FileSystemException("Hidden file access not allowed by sandbox settings");
+	}
 	}
 }
 

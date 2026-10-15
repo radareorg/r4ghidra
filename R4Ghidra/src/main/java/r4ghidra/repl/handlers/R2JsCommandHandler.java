@@ -50,6 +50,8 @@ public String execute(R2Command command, R2Context context) throws R2CommandExce
 	if (!command.hasPrefix("js")) {
 	throw new R2CommandException("Not a JavaScript command");
 	}
+	// Nashorn exposes arbitrary Java classes; allowing exec alone cannot constrain that access.
+	context.requireSandboxPermission(R2Context.R_SANDBOX_GRAIN_ALL, "JavaScript host access");
 
 	String script;
 	// Get the script from arguments or subcommand

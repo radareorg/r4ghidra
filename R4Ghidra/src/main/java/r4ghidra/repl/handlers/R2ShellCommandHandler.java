@@ -24,6 +24,9 @@ public String execute(R2Command command, R2Context context) throws R2CommandExce
 
 	// Get the raw command string and strip the '!' prefix
 	String cmdLine = command.getPrefix() + command.getSubcommand();
+	if (!cmdLine.equals("!")) {
+	context.requireSandboxPermission(R2Context.R_SANDBOX_GRAIN_EXEC, "Shell execution");
+	}
 
 	// Handle different shell command types
 	if (cmdLine.startsWith("!!")) {

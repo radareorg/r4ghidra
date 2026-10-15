@@ -81,6 +81,6 @@ public class R2ProjectCommandHandler implements R2CommandHandler {
         + " Po <file>       - alias for prj load\n"
         + " Ps <file>       - alias for prj save\n"
         + " Quote paths containing spaces. $files work in memory; disk access follows"
-        + " cfg.sandbox.\n";
+        + " cfg.sandbox and cfg.sandbox.grain.\n";
   }
 }

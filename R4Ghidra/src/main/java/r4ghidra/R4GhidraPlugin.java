@@ -588,10 +588,15 @@ public class R4GhidraPlugin extends ProgramPlugin {
           String newValue = aValue.toString();
 
           // Update the value in the config
-          evalConfig.set(key, newValue);
+          try {
+            evalConfig.set(key, newValue);
+          } catch (IllegalArgumentException e) {
+            OkDialog.showError("Invalid configuration", e.getMessage());
+            return;
+          }
 
           // Update the local cache
-          values.set(rowIndex, newValue);
+          values.set(rowIndex, evalConfig.get(key));
 
           // Notify listeners that the value has changed
           fireTableCellUpdated(rowIndex, columnIndex);

@@ -20,6 +20,9 @@ public String execute(R2Command command, R2Context context) throws R2CommandExce
 	if (!command.hasPrefix("q")) {
 	throw new R2CommandException("Not a quit command");
 	}
+	if (command.getSubcommand().equals("!!") || command.getArgumentCount() > 0) {
+	context.requireSandboxPermission(R2Context.R_SANDBOX_GRAIN_EXEC, "Process exit");
+	}
 
 	// Special handling for q!! syntax
 	if (command.getSubcommand().equals("!!")) {

@@ -24,6 +24,7 @@ public String execute(R2Command command, R2Context context) throws R2CommandExce
 	if (!command.hasPrefix("%")) {
 	throw new R2CommandException("Not an environment command");
 	}
+	context.requireSandboxPermission(R2Context.R_SANDBOX_GRAIN_ENVIRON, "Environment access");
 
 	// Get the subcommand (the part after %)
 	String subcommand = command.getSubcommand().trim();

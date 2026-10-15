@@ -19,6 +19,7 @@ public class R4GhidraHttpHandler implements HttpHandler {
   public R4GhidraHttpHandler() {
 
     repl = new R2REPLImpl();
+    repl.getContext().lockSandbox();
     repl.registerCommands(R4CommandInitializer.getCommandHandlers());
   }
 

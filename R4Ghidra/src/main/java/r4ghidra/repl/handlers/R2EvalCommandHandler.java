@@ -8,6 +8,7 @@ import r4ghidra.repl.R2CommandException;
 import r4ghidra.repl.R2CommandHandler;
 import r4ghidra.repl.R2Context;
 import r4ghidra.repl.config.R2EvalConfig;
+import r4ghidra.repl.sandbox.R2Sandbox;
 
 /**
  * Handler for the 'e' (eval) command
@@ -35,7 +36,7 @@ public String execute(R2Command command, R2Context context) throws R2CommandExce
 	if (!rawSub.isEmpty()) {
 	expr = rawSub;
 	} else if (command.getArgumentCount() > 0) {
-	expr = command.getFirstArgument("");
+	expr = String.join(" ", command.getArguments());
 	} else {
 	expr = "";
 	}
@@ -59,6 +60,9 @@ private String handleSetVariable(String subcommand, R2EvalConfig config, R2Comma
 	int equalPos = subcommand.indexOf('=');
 	String key = subcommand.substring(0, equalPos).trim();
 	String value = subcommand.substring(equalPos + 1).trim();
+	if ((key.equals("cfg.sandbox.grain") || key.equals("sandbox.grain")) && value.equals("?")) {
+	return R2Sandbox.getHelp();
+	}
 
 	// Validate the key
 	if (key.isEmpty()) {
@@ -92,7 +96,12 @@ private String handleSetVariable(String subcommand, R2EvalConfig config, R2Comma
 	}
 
 	// Set the variable
-	boolean changed = config.set(key, value);
+	boolean changed;
+	try {
+	changed = config.set(key, value);
+	} catch (IllegalArgumentException e) {
+	throw new R2CommandException(e.getMessage());
+	}
 
 	// Format the result based on the command suffix
 	if (command.hasSuffix('q')) {
@@ -102,7 +111,7 @@ private String handleSetVariable(String subcommand, R2EvalConfig config, R2Comma
 	// JSON output
 	JSONObject json = new JSONObject();
 	json.put("key", key);
-	json.put("value", value);
+	json.put("value", config.get(key));
 	json.put("changed", changed);
 	return json.toString() + "\n";
 	} else {
@@ -220,6 +229,7 @@ public String getHelp() {
 	sb.append(" ej               list all eval vars in JSON format\n");
 	sb.append(" eq               list only variable names, one per line\n\n");
 	sb.append(" echo [text]      echo text to console (alias for ?e)\n");
+	sb.append(" e cfg.sandbox.grain=?  show sandbox permissions and syntax\n");
 	/*
 			sb.append("Available variables:\n");
 			sb.append(" asm.arch         set architecture (x86, arm, etc.)\n");

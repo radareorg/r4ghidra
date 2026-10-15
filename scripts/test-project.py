@@ -44,7 +44,9 @@ with tempfile.TemporaryDirectory(prefix="r4ghidra-project-") as directory:
     tests = ROOT / "R4Ghidra/src/test/java"
     sources = [main / "r4ghidra/project/R2Project.java",
                main / "r4ghidra/project/R2ProjectCodec.java",
-               tests / "r4ghidra/project/R2ProjectCodecTest.java"]
+               tests / "r4ghidra/project/R2ProjectCodecTest.java",
+               main / "r4ghidra/repl/sandbox/R2Sandbox.java",
+               tests / "r4ghidra/repl/sandbox/R2SandboxTest.java"]
     jars = []
     if args.ghidra:
         jars = list((Path(args.ghidra) / "Ghidra").rglob("*.jar"))
@@ -52,6 +54,7 @@ with tempfile.TemporaryDirectory(prefix="r4ghidra-project-") as directory:
         sources = list(main.rglob("*.java")) + list(tests.rglob("*.java"))
     classpath = os.pathsep.join(map(str, [work, *jars]))
     run([java_tool("javac"), "-cp", classpath, "-d", work, *sources])
+    run([java_tool("java"), "-cp", classpath, "r4ghidra.repl.sandbox.R2SandboxTest"])
     codec = [java_tool("java"), "-cp", classpath, "r4ghidra.project.R2ProjectCodecTest"]
     if args.r2:
         native = work / "native.rprj"

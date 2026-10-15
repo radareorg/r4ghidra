@@ -123,6 +123,7 @@ public void registerCommands(List<R2CommandHandler> commands) {
     if (cmdStr == null || cmdStr.trim().isEmpty()) {
       return "";
     }
+    cmdStr = cmdStr.trim();
 
     // Special case: if command starts with #, it's a comment-only command
     // and should be treated as empty
@@ -223,6 +224,11 @@ public void registerCommands(List<R2CommandHandler> commands) {
         return executeBracedCommand(cmdStr);
       }
 
+      // Preserve shell quoting and arguments instead of rebuilding them from r2 tokens.
+      if (cmdStr.startsWith("!") && !cmdStr.equals("!?")) {
+        return executeCommandWithHandler(new R2Command("!", cmdStr.substring(1), List.of(), null));
+      }
+
       // Parse the command
       R2Command cmd = parseCommand(cmdStr);
       // If the suffix is '?', show help for this command prefix
@@ -292,8 +298,13 @@ public void registerCommands(List<R2CommandHandler> commands) {
     }
 
     // Check if we're loading a script file (when command starts with a space)
-    if (cmdStr.startsWith(" ")) {
+    if (dotCmdStr.length() > 1 && Character.isWhitespace(dotCmdStr.charAt(1))) {
       String filePath = cmdStr.trim();
+      if (filePath.length() >= 2
+          && ((filePath.startsWith("\"") && filePath.endsWith("\""))
+              || (filePath.startsWith("'") && filePath.endsWith("'")))) {
+        filePath = filePath.substring(1, filePath.length() - 1);
+      }
 
       // Check if it's a JavaScript file (.r2.js extension)
       if (filePath.toLowerCase().endsWith(".r2.js")) {
@@ -319,15 +330,9 @@ public void registerCommands(List<R2CommandHandler> commands) {
    * @return The result of executing the JavaScript file
    */
   private String executeJavaScriptFile(String filePath) throws R2CommandException {
+    context.requireSandboxPermission(R2Context.R_SANDBOX_GRAIN_ALL, "JavaScript host access");
     try {
-      // Check if the file exists
-      java.nio.file.Path path = java.nio.file.Paths.get(filePath);
-      if (!java.nio.file.Files.exists(path)) {
-        throw new R2CommandException("JavaScript file not found: " + filePath);
-      }
-
-      // Read the JavaScript file
-      String scriptContent = new String(java.nio.file.Files.readAllBytes(path));
+      String scriptContent = context.getFileSystem().readFile(filePath);
 
       // Find or create a JavaScript command handler
       R2CommandHandler jsHandler = commandRegistry.get("js");
@@ -341,7 +346,7 @@ public void registerCommands(List<R2CommandHandler> commands) {
       // Execute the JavaScript file
       return jsHandler.execute(jsCommand, context);
 
-    } catch (java.io.IOException e) {
+    } catch (java.io.IOException | r4ghidra.repl.filesystem.R2FileSystemException e) {
       throw new R2CommandException("Error reading JavaScript file: " + e.getMessage());
     }
   }
@@ -354,16 +359,10 @@ public void registerCommands(List<R2CommandHandler> commands) {
    */
   private String executeScriptFile(String filePath) throws R2CommandException {
     try {
-      // Read the script file
-      java.nio.file.Path path = java.nio.file.Paths.get(filePath);
-      if (!java.nio.file.Files.exists(path)) {
-        throw new R2CommandException("Script file not found: " + filePath);
-      }
-
-      String scriptContent = new String(java.nio.file.Files.readAllBytes(path));
+      String scriptContent = context.getFileSystem().readFile(filePath);
       return executeScriptFromOutput(scriptContent);
 
-    } catch (java.io.IOException e) {
+    } catch (java.io.IOException | r4ghidra.repl.filesystem.R2FileSystemException e) {
       throw new R2CommandException("Error reading script file: " + e.getMessage());
     }
   }
@@ -957,6 +956,7 @@ public void registerCommands(List<R2CommandHandler> commands) {
    * @return The result of executing the pipe command
    */
   private String executePipeCommand(String cmdStr, int pipeIndex) throws R2CommandException {
+    context.requireSandboxPermission(R2Context.R_SANDBOX_GRAIN_EXEC, "External pipe execution");
     // Split the command string at the pipe
     String leftCmd = cmdStr.substring(0, pipeIndex).trim();
     String rightCmd = cmdStr.substring(pipeIndex + 1).trim();
@@ -967,6 +967,7 @@ public void registerCommands(List<R2CommandHandler> commands) {
 
     // Execute the left command to get its output
     String leftOutput = executeCommand(leftCmd);
+    context.requireSandboxPermission(R2Context.R_SANDBOX_GRAIN_EXEC, "External pipe execution");
 
     try {
       // Create a process for the right command

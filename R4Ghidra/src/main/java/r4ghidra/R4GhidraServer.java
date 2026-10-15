@@ -45,7 +45,7 @@ public class R4GhidraServer {
    */
   public static void start(int port) throws IOException {
     stop();
-    server = HttpServer.create(new InetSocketAddress(port), 0);
+    server = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
     server.createContext("/", new MyRootHandler());
     server.createContext("/cmd", new R4GhidraHttpHandler());
     server.setExecutor(null); // creates a default executor

@@ -125,15 +125,33 @@ Note: The older script name `r2web_headless.py` is still available for backward 
 Import and export binary radare2 project files from the shell or HTTP command interface:
 
 ```text
-e cfg.sandbox=false
+e cfg.sandbox.grain=files,disk
 prj load "/path/to/analysis.rprj"
 prj save "/path/to/export.rprj"
 ```
 
 `Po <file>` and `Ps <file>` are aliases for load and save. `prj?` shows help.
 Disk access follows the REPL sandbox settings; `$` memory files work with the sandbox enabled
-(for example, `Ps $snapshot` and `Po $snapshot`). The existing default sandbox restrictions
-are now also reflected by `cfg.sandbox=true`; setting it to false enables file access.
+(for example, `Ps $snapshot` and `Po $snapshot`). The default is `cfg.sandbox=true` with
+`cfg.sandbox.grain=none`. Grant `files` for reads or `files,disk` for reads and writes.
+
+`cfg.sandbox.grain` (also available as `sandbox.grain`) accepts comma-separated allowed
+permissions: `files`, `disk`, `exec`, `environ`, `hidden`, `socket`, `network`, `all`, and `none`.
+`file` is an alias for `files`; `!name` removes a permission, and a leading `!` starts from all
+permissions. For example, `!disk,!exec` allows everything except writes and process execution.
+Use `e cfg.sandbox.grain=?` for help. Invalid values leave the policy unchanged.
+
+The local shell can change its policy or disable it with `e cfg.sandbox=false`. Re-enabling it
+preserves the selected grain. File checks cover binary projects, text and binary files,
+redirections, script loading, directory listings, file existence, and hidden symlink targets.
+`$` memory files always remain available. `exec` permits external shell commands, pipes, and
+process exit; these child processes run with the host user's privileges. JavaScript requires
+all permissions because Nashorn exposes unrestricted JVM access. `socket` and `network` are
+reserved for future REPL network operations; the HTTP listener is started by the host UI or CLI.
+
+The HTTP server listens on `127.0.0.1`. Its command context has a locked sandbox with no host
+permissions: remote commands cannot disable it or grant additional permissions. Memory project
+import/export and ordinary analysis commands remain available over HTTP.
 
 The **Tools → R4Ghidra** menu also has **Import radare2 Binary Project...** and
 **Export radare2 Binary Project...** file dialogs. These operate on the current program and
