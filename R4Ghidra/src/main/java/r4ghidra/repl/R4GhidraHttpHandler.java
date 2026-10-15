@@ -18,19 +18,7 @@ public class R4GhidraHttpHandler implements HttpHandler {
   private R2REPLImpl repl;
   private Map<String, R2CommandHandler> commandRegistry;
 
-  /** Create a new handler */
-  /**
-   * Create a new HTTP handler for R4Ghidra
-   *
-   * @param plugin The R4Ghidra plugin instance that provides command handlers
-   */
-  /*public R4GhidraHttpHandler(R4GhidraPlugin plugin) {
-    commandRegistry = new HashMap<>();
-
-    repl = new R2REPLImpl();
-    repl.registerCommands (plugin.getCommandHandlers());
-  }*/
-
+  /** Create a new HTTP handler using the shared R4Ghidra command registry. */
   public R4GhidraHttpHandler(){
 
     repl = new R2REPLImpl();
