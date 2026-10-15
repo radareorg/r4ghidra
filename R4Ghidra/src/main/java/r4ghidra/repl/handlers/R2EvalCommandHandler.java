@@ -22,6 +22,10 @@ public String execute(R2Command command, R2Context context) throws R2CommandExce
 	if (!command.hasPrefix("e")) {
 	throw new R2CommandException("Not an eval command");
 	}
+	// echo is an alias for ?e within the 'e' command family.
+	if (command.getSubcommand().equals("cho")) {
+	return String.join(" ", command.getArguments()) + "\n";
+	}
 	// Access the configuration manager
 	R2EvalConfig config = context.getEvalConfig();
 
@@ -215,6 +219,7 @@ public String getHelp() {
 	sb.append(" e*               list all eval vars as r2 commands\n");
 	sb.append(" ej               list all eval vars in JSON format\n");
 	sb.append(" eq               list only variable names, one per line\n\n");
+	sb.append(" echo [text]      echo text to console (alias for ?e)\n");
 	/*
 			sb.append("Available variables:\n");
 			sb.append(" asm.arch         set architecture (x86, arm, etc.)\n");

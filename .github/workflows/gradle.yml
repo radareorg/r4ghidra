@@ -55,6 +55,9 @@ jobs:
     - name: Test binary project compatibility
       run: python3 scripts/test-project.py
 
+    - name: Test HTTP commands
+      run: python3 scripts/test-http.py
+
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:

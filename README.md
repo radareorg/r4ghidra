@@ -92,6 +92,23 @@ The plugin registers a new menu item under the Tools menu of Ghidra's Code Brows
 1. Use the built-in r2 REPL directly within Ghidra
 2. Connect from an external radare2 instance using r2's web protocols
 
+### HTTP commands
+
+The `/cmd/` endpoint accepts GET and POST requests. POST bodies contain raw UTF-8 command text.
+When the URI also contains a command, the server joins it with the body using a space:
+
+```sh
+curl http://localhost:9090/cmd/echo%20hello
+curl -d 'echo hello' http://localhost:9090/cmd/
+curl -d hello http://localhost:9090/cmd/echo
+```
+
+All three return `hello` followed by a newline. URI commands are percent-decoded; POST bodies
+are used as-is. An empty POST body executes the URI command. Query-string commands are also
+supported (for example, `/cmd/?echo`), taking precedence over the path command for both methods.
+
+Run the HTTP regression tests with `GHIDRA_INSTALL_DIR=/path/to/ghidra make test-http`.
+
 ### Headless Mode
 
 The Python script provided in the `ghidra_scripts` directory initializes the R4Ghidra server on port 9191 by default. You can change the port by setting the `R4GHIDRA_PORT` environment variable (or `R2WEB_PORT` for backward compatibility). You should provide this script as `-postScript` when launching headless Ghidra:

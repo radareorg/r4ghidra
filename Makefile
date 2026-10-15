@@ -8,6 +8,9 @@ all:
 test-project:
 	python3 scripts/test-project.py
 
+test-http:
+	python3 scripts/test-http.py
+
 oops:
 	analyzeHeadless . Test.gpr -import $(TESTBIN) -postScript $(SCRIPT) $(FCNADDR) -deleteProject
 	r2 -caf -i ghidra-output.r2 $(TESTBIN)
