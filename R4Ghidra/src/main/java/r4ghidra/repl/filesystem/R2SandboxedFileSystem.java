@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,7 +27,7 @@ public class R2SandboxedFileSystem implements R2FileSystem {
 private R2Context context;
 
 // In-memory files ($-prefixed)
-private Map<String, String> memoryFiles;
+private Map<String, byte[]> memoryFiles;
 
 /**
 * Create a new R2SandboxedFileSystem
@@ -53,6 +54,38 @@ public String readFile(String path) throws IOException, R2FileSystemException {
 	// Proceed with regular file read
 	Path filePath = Paths.get(path);
 	return Files.readString(filePath);
+}
+
+@Override
+public byte[] readBytes(String path) throws IOException, R2FileSystemException {
+	if (isMemoryFile(path)) {
+		String name = getMemoryFileName(path);
+		if (!memoryFiles.containsKey(name)) {
+			throw new R2FileSystemException("Memory file not found: " + path);
+		}
+		return memoryFiles.get(name).clone();
+	}
+	if (context.isSandboxed(R2Context.R_SANDBOX_GRAIN_FILES)) {
+		throw new R2FileSystemException("File reading not allowed by sandbox settings");
+	}
+	return Files.readAllBytes(Paths.get(path));
+}
+
+@Override
+public void writeBytes(String path, byte[] content) throws IOException, R2FileSystemException {
+	if (isMemoryFile(path)) {
+		memoryFiles.put(getMemoryFileName(path), content.clone());
+		return;
+	}
+	if (context.isSandboxed(R2Context.R_SANDBOX_GRAIN_DISK)
+			|| context.isSandboxed(R2Context.R_SANDBOX_GRAIN_FILES)) {
+		throw new R2FileSystemException("File writing not allowed by sandbox settings");
+	}
+	Path filePath = Paths.get(path);
+	if (filePath.getParent() != null) {
+		Files.createDirectories(filePath.getParent());
+	}
+	Files.write(filePath, content);
 }
 
 @Override
@@ -202,7 +235,7 @@ private String readMemoryFile(String path) throws R2FileSystemException {
 	if (!memoryFiles.containsKey(memoryFileName)) {
 	throw new R2FileSystemException("Memory file not found: " + path);
 	}
-	return memoryFiles.get(memoryFileName);
+	return new String(memoryFiles.get(memoryFileName), StandardCharsets.UTF_8);
 }
 
 /**
@@ -213,7 +246,7 @@ private String readMemoryFile(String path) throws R2FileSystemException {
 */
 private void writeMemoryFile(String path, String content) {
 	String memoryFileName = getMemoryFileName(path);
-	memoryFiles.put(memoryFileName, content);
+	memoryFiles.put(memoryFileName, content.getBytes(StandardCharsets.UTF_8));
 }
 
 /**
@@ -227,11 +260,14 @@ private void appendMemoryFile(String path, String content) throws R2FileSystemEx
 	String memoryFileName = getMemoryFileName(path);
 	if (!memoryFiles.containsKey(memoryFileName)) {
 	// If it doesn't exist, create it
-	memoryFiles.put(memoryFileName, content);
+	memoryFiles.put(memoryFileName, content.getBytes(StandardCharsets.UTF_8));
 	} else {
 	// If it exists, append to it
-	String existingContent = memoryFiles.get(memoryFileName);
-	memoryFiles.put(memoryFileName, existingContent + content);
+	byte[] existingContent = memoryFiles.get(memoryFileName);
+	byte[] suffix = content.getBytes(StandardCharsets.UTF_8);
+	byte[] combined = java.util.Arrays.copyOf(existingContent, existingContent.length + suffix.length);
+	System.arraycopy(suffix, 0, combined, existingContent.length, suffix.length);
+	memoryFiles.put(memoryFileName, combined);
 	}
 }
 

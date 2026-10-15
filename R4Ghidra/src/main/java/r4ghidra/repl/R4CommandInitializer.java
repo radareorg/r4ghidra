@@ -61,6 +61,7 @@ public class R4CommandInitializer {
         commandHandlers.add(new R2InfoCommandHandler());
         commandHandlers.add(new R2CommentCommandHandler());
         commandHandlers.add(new R2FlagCommandHandler());
+        commandHandlers.add(new R2ProjectCommandHandler());
         commandHandlers.add(new R2QuitCommandHandler());
         commandHandlers.add(new R2ClearCommandHandler());
 

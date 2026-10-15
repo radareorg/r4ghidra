@@ -53,7 +53,7 @@ private void initDefaults() {
 	// Configuration settings
 	set("cfg.bigendian", "false", false);
 	set("cfg.endian", "little", false);
-	set("cfg.sandbox", "false", false);
+	set("cfg.sandbox", "true", false);
 	set("cfg.sandbox.grain", "rw", false);
 
 	// Screen settings

@@ -56,7 +56,7 @@ public String execute(R2Command command, R2Context context) throws R2CommandExce
 	}
 
 	// Get the first character as the command prefix
-	String prefix = cmdName.substring(0, 1);
+	String prefix = commandRegistry.containsKey(cmdName) ? cmdName : cmdName.substring(0, 1);
 	R2CommandHandler handler = commandRegistry.get(prefix);
 
 	if (handler == null) {

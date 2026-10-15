@@ -5,6 +5,9 @@ SCRIPT=R4GhidraServer.java
 all:
 	$(MAKE) -C R4Ghidra
 
+test-project:
+	python3 scripts/test-project.py
+
 oops:
 	analyzeHeadless . Test.gpr -import $(TESTBIN) -postScript $(SCRIPT) $(FCNADDR) -deleteProject
 	r2 -caf -i ghidra-output.r2 $(TESTBIN)

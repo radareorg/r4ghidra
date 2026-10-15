@@ -11,6 +11,12 @@ import java.util.List;
  */
 public interface R2FileSystem {
 
+/** Read binary content while respecting the same sandbox rules as readFile. */
+byte[] readBytes(String path) throws IOException, R2FileSystemException;
+
+/** Write binary content while respecting the same sandbox rules as writeFile. */
+void writeBytes(String path, byte[] content) throws IOException, R2FileSystemException;
+
 /**
 * Read the contents of a file
 *

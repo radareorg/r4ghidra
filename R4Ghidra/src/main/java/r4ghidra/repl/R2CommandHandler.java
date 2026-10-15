@@ -8,6 +8,11 @@ package r4ghidra.repl;
  */
 public interface R2CommandHandler {
 
+  /** Explicit command names, for handlers that need aliases or multi-character prefixes. */
+  default String[] getPrefixes() {
+    return new String[0];
+  }
+
   /**
    * Execute a command
    *

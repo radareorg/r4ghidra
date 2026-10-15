@@ -103,6 +103,48 @@ The Python script provided in the `ghidra_scripts` directory initializes the R4G
 
 Note: The older script name `r2web_headless.py` is still available for backward compatibility.
 
+### Binary radare2 projects
+
+Import and export binary radare2 project files from the shell or HTTP command interface:
+
+```text
+e cfg.sandbox=false
+prj load "/path/to/analysis.rprj"
+prj save "/path/to/export.rprj"
+```
+
+`Po <file>` and `Ps <file>` are aliases for load and save. `prj?` shows help.
+Disk access follows the REPL sandbox settings; `$` memory files work with the sandbox enabled
+(for example, `Ps $snapshot` and `Po $snapshot`). The existing default sandbox restrictions
+are now also reflected by `cfg.sandbox=true`; setting it to false enables file access.
+
+The **Tools → R4Ghidra** menu also has **Import radare2 Binary Project...** and
+**Export radare2 Binary Project...** file dialogs. These operate on the current program and
+the selected file directly. Import merges analysis in one undoable transaction; cancellation
+or an error rolls back the import. Load the corresponding binary in Ghidra first.
+
+The native Java API lives in `r4ghidra.project`: `R2ProjectCodec.read/write` handles the
+binary format without Ghidra dependencies, and `R2ProjectService.importProject/exportProject`
+adapts it to a Ghidra program. It reads RPRJ versions 5 and 6 and writes version 6, compatible
+with radare2's `prj load` and `prj save` commands.
+
+Transfers include mapped-file descriptions, module bounds, flags/labels, end-of-line comments,
+function names and bodies, no-return attributes, and memory references. Module-relative addresses
+are rebased when a unique matching memory block is found by size and checksum, name, or file offset;
+otherwise the saved addresses are used with a warning. Imports do not open mapped files or run
+embedded commands. Configuration, types, hints, debugger state, flag extras, block colors,
+function variables and calling conventions are not applied; unsupported nonempty sections and
+other omissions are reported. Exports contain analysis and file references, without embedded
+binary contents. REPL flag sizes are limited to positive signed 32-bit values.
+
+Run the standalone format tests with `make test-project`. For real Ghidra transaction/parser
+tests and bidirectional compatibility checks with a recent radare2 supporting binary projects:
+
+```sh
+JAVA_HOME=/path/to/jdk GHIDRA_INSTALL_DIR=/path/to/ghidra \
+  R2_BIN=/path/to/radare2 make test-project
+```
+
 ### R2 Features Support
 
 R4Ghidra implements a complete radare2 REPL with support for:

@@ -115,12 +115,19 @@ public class R2Context {
   /** Create a new context with specified sandbox restrictions */
   public R2Context(int sandboxFlags) {
     this();
-    this.sandboxFlags = sandboxFlags;
+    setSandboxFlags(sandboxFlags);
     this.fileSystem = new R2SandboxedFileSystem(this);
   }
 
   /** Set up listeners for configuration variables */
   private void setupConfigListeners() {
+    evalConfig.registerListener(
+        "cfg.sandbox",
+        (key, oldValue, newValue) ->
+            setSandboxFlags(
+                newValue.equals("true") || newValue.equals("1")
+                    ? R_SANDBOX_GRAIN_ALL : R_SANDBOX_GRAIN_NONE));
+
     // Listen for asm.bits changes
     evalConfig.registerListener(
         "asm.bits",
@@ -404,6 +411,7 @@ public class R2Context {
    */
   public void setSandboxFlags(int flags) {
     this.sandboxFlags = flags;
+    evalConfig.set("cfg.sandbox", flags == R_SANDBOX_GRAIN_NONE ? "false" : "true", false);
   }
 
   /**

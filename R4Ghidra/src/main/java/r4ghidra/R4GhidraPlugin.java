@@ -31,17 +31,25 @@ import ghidra.framework.plugintool.util.PluginStatus;
 import ghidra.program.flatapi.FlatProgramAPI;
 import ghidra.program.model.listing.Program;
 import ghidra.util.HelpLocation;
+import ghidra.util.exception.CancelledException;
+import ghidra.util.task.Task;
+import ghidra.util.task.TaskLauncher;
+import ghidra.util.task.TaskMonitor;
 import java.awt.BorderLayout;
 import java.awt.Frame;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.*;
 import javax.swing.SwingUtilities;
-
-import r4ghidra.repl.R4CommandInitializer;
+import r4ghidra.project.R2Project;
+import r4ghidra.project.R2ProjectCodec;
+import r4ghidra.project.R2ProjectService;
 import r4ghidra.repl.R2CommandHandler;
 import r4ghidra.repl.R2Context;
+import r4ghidra.repl.R4CommandInitializer;
 
 /** Provide class-level documentation that describes what this plugin does. */
 // @formatter:off
@@ -264,6 +272,8 @@ public class R4GhidraPlugin extends ProgramPlugin {
       // Update start/stop enablement
       updateStartStopActions();
       dockingTool.addAction(commandShellAction);
+      createProjectAction(true);
+      createProjectAction(false);
       // Action to open settings dialog
       settingsAction =
           new DockingAction("R4Ghidra Settings", getName()) {
@@ -282,6 +292,99 @@ public class R4GhidraPlugin extends ProgramPlugin {
       settingsAction.setEnabled(true);
       settingsAction.markHelpUnnecessary();
       dockingTool.addAction(settingsAction);
+    }
+
+    private void createProjectAction(boolean importing) {
+      String title = importing ? "Import radare2 Binary Project" : "Export radare2 Binary Project";
+      DockingAction action =
+          new DockingAction(title, getName()) {
+            @Override
+            public boolean isEnabledForContext(ActionContext context) {
+              return plugin.currentProgram != null;
+            }
+
+            @Override
+            public void actionPerformed(ActionContext context) {
+              chooseProjectFile(importing, title);
+            }
+          };
+      action.setMenuBarData(
+          new MenuData(
+              new String[] {ToolConstants.MENU_TOOLS, "R4Ghidra", title + "..."},
+              null,
+              "r4ghidra",
+              MenuData.NO_MNEMONIC,
+              "2"));
+      action.markHelpUnnecessary();
+      dockingTool.addAction(action);
+    }
+
+    private void chooseProjectFile(boolean importing, String title) {
+      Program program = plugin.currentProgram;
+      if (program == null) {
+        return;
+      }
+      JFileChooser chooser = new JFileChooser();
+      chooser.setDialogTitle(title);
+      chooser.setFileFilter(
+          new javax.swing.filechooser.FileNameExtensionFilter(
+              "radare2 binary project (*.rprj)", "rprj"));
+      if (!importing) {
+        chooser.setSelectedFile(new java.io.File(program.getName() + ".rprj"));
+      }
+      Frame owner = plugin.getTool().getToolFrame();
+      int choice = importing ? chooser.showOpenDialog(owner) : chooser.showSaveDialog(owner);
+      if (choice != JFileChooser.APPROVE_OPTION) {
+        return;
+      }
+      Path path = chooser.getSelectedFile().toPath();
+      if (!importing
+          && Files.exists(path)
+          && JOptionPane.showConfirmDialog(
+                  owner, "Replace " + path + "?", title, JOptionPane.YES_NO_OPTION)
+              != JOptionPane.YES_OPTION) {
+        return;
+      }
+      R2Context candidate =
+          plugin.shellProvider == null ? null : plugin.shellProvider.getREPLContext();
+      R2Context replContext =
+          candidate != null && candidate.getAPI().getCurrentProgram() == program ? candidate : null;
+      TaskLauncher.launch(
+          new Task(title, true, true, true) {
+            @Override
+            public void run(TaskMonitor monitor) {
+              program.addConsumer(this);
+              try {
+                String message;
+                if (importing) {
+                  message =
+                      R2ProjectService.importProject(
+                              program, replContext, Files.readAllBytes(path), monitor)
+                          .describe();
+                } else {
+                  R2Project project = R2ProjectService.exportProject(program, replContext, monitor);
+                  byte[] data = R2ProjectCodec.write(project);
+                  monitor.checkCancelled();
+                  Files.write(path, data);
+                  message =
+                      new R2ProjectService.Result(
+                              project.flags.size(),
+                              project.comments.size(),
+                              project.functions.size(),
+                              project.xrefs.size(),
+                              project.warnings)
+                          .describe();
+                }
+                SwingUtilities.invokeLater(() -> OkDialog.showInfo(title, message));
+              } catch (CancelledException e) {
+                // Import transaction rolls back; export checks cancellation before writing.
+              } catch (Exception e) {
+                SwingUtilities.invokeLater(() -> OkDialog.showError(title, e.getMessage()));
+              } finally {
+                program.release(this);
+              }
+            }
+          });
     }
 
     @Override

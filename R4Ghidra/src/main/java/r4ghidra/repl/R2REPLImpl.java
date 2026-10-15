@@ -66,7 +66,11 @@ public void registerCommands(List<R2CommandHandler> commands) {
     for (R2CommandHandler handler : commands) {
       // For the special case of R2HelpCommandHandler, we need to register it with the
       // commandRegistry
-      if (handler instanceof r4ghidra.repl.handlers.R2HelpCommandHandler) {
+      if (handler.getPrefixes().length > 0) {
+        for (String prefix : handler.getPrefixes()) {
+          commandRegistry.put(prefix, handler);
+        }
+      } else if (handler instanceof r4ghidra.repl.handlers.R2HelpCommandHandler) {
         // We'll add it at the end after populating the registry
       } else {
         // Get the prefix from the command's first character in its help text
@@ -492,8 +496,8 @@ public void registerCommands(List<R2CommandHandler> commands) {
       throw new R2CommandException("Empty command");
     }
 
-    String prefix = String.valueOf(cmdStr.charAt(0));
-    String subcommand = cmdStr.length() > 1 ? cmdStr.substring(1) : "";
+    String prefix = commandPrefix(cmdStr);
+    String subcommand = cmdStr.substring(prefix.length());
 
     List<String> args = new ArrayList<>();
 
@@ -537,8 +541,8 @@ public void registerCommands(List<R2CommandHandler> commands) {
     // and not as command separators - this is handled because we're executing this command directly
     // without passing it back through executeCommand
 
-    String prefix = String.valueOf(cmdStr.charAt(0));
-    String subcommand = cmdStr.length() > 1 ? cmdStr.substring(1) : "";
+    String prefix = commandPrefix(cmdStr);
+    String subcommand = cmdStr.substring(prefix.length());
 
     List<String> args = new ArrayList<>();
 
@@ -728,8 +732,8 @@ public void registerCommands(List<R2CommandHandler> commands) {
       throw new R2CommandException("Empty command");
     }
 
-    String prefix = String.valueOf(mainCommand.charAt(0));
-    String subcommand = mainCommand.length() > 1 ? mainCommand.substring(1) : "";
+    String prefix = commandPrefix(mainCommand);
+    String subcommand = mainCommand.substring(prefix.length());
 
     List<String> args = new ArrayList<>();
 
@@ -758,6 +762,20 @@ public void registerCommands(List<R2CommandHandler> commands) {
     }
 
     return new R2Command(prefix, subcommand, args, tempAddress);
+  }
+
+  /** Prefer an explicitly registered command name over its single-letter family. */
+  private String commandPrefix(String command) {
+    String prefix = command.substring(0, 1);
+    for (String candidate : commandRegistry.keySet()) {
+      if (candidate.length() > prefix.length() && command.startsWith(candidate)
+          && (command.length() == candidate.length()
+              || Character.isWhitespace(command.charAt(candidate.length()))
+              || command.charAt(candidate.length()) == '?')) {
+        prefix = candidate;
+      }
+    }
+    return prefix;
   }
 
   /** Process any command substitution using backticks */
@@ -1197,8 +1215,8 @@ public void registerCommands(List<R2CommandHandler> commands) {
       throw new R2CommandException("Empty command");
     }
 
-    String prefix = String.valueOf(mainCommand.charAt(0));
-    String subcommand = mainCommand.length() > 1 ? mainCommand.substring(1) : "";
+    String prefix = commandPrefix(mainCommand);
+    String subcommand = mainCommand.substring(prefix.length());
 
     List<String> args = new ArrayList<>();
 
