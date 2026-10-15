@@ -4,6 +4,11 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Dependabot preserves full commit SHA pins and updates version comments.
+    groups:
+      github-actions:
+        patterns:
+          - "*"
     commit-message:
       prefix: "##build "
       prefix-development: "##build "

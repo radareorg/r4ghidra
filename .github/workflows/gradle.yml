@@ -28,24 +28,25 @@ jobs:
           - "12.0.4"
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     - name: Setup JDK
-      uses: actions/setup-java@v5
+      uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
       with:
         java-version: '21'
         distribution: 'temurin'
 
     - name: Setup Ghidra
-      uses: antoniovazquezblanco/setup-ghidra@v2.0.12
+      uses: antoniovazquezblanco/setup-ghidra@2bb30c438fe1e50617ff261ad6de159376970972 # v2.2.1
       with:
         version: ${{ matrix.ghidra }}
 
     # Configure Gradle for optimal use in GitHub Actions, including caching of downloaded dependencies.
     # See: https://github.com/gradle/actions/blob/main/setup-gradle/README.md
     - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@017a9effdb900e5b5b2fddfb590a105619dca3c3 # v4.4.2
+      uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
       with:
+        cache-provider: 'basic'
         gradle-version: '8.5'
 
     - name: Build with Gradle Wrapper
@@ -59,31 +60,32 @@ jobs:
       run: python3 scripts/test-http.py
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: R4Ghidra_Ghidra_${{ matrix.ghidra }}
         path: R4Ghidra/dist/*.zip
-        
+
   documentation:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     - name: Setup JDK
-      uses: actions/setup-java@v5
+      uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
       with:
         java-version: '21'
         distribution: 'temurin'
 
     - name: Setup Ghidra (latest version only)
-      uses: antoniovazquezblanco/setup-ghidra@v2.0.12
+      uses: antoniovazquezblanco/setup-ghidra@2bb30c438fe1e50617ff261ad6de159376970972 # v2.2.1
       with:
         version: "12.1.4"
 
     - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@017a9effdb900e5b5b2fddfb590a105619dca3c3 # v4.4.2
+      uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
       with:
+        cache-provider: 'basic'
         gradle-version: '8.5'
 
     - name: Generate Javadoc
@@ -99,7 +101,7 @@ jobs:
       working-directory: ./R4Ghidra
 
     - name: Upload documentation
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: R4Ghidra-javadoc
         path: R4Ghidra/R4Ghidra-javadoc.zip
@@ -108,10 +110,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     - name: Setup JDK
-      uses: actions/setup-java@v5
+      uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
       with:
         java-version: '21'
         distribution: 'temurin'
@@ -125,10 +127,10 @@ jobs:
 
     steps:
     - name: Download binaries
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
 
-    - name: Release 
-      uses: softprops/action-gh-release@v2
+    - name: Release
+      uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
       if: startsWith(github.ref, 'refs/tags/')
       with:
         files: |
