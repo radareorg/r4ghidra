@@ -2,9 +2,11 @@ package r4ghidra.repl.handlers;
 
 import java.util.function.Function;
 import javax.script.Bindings;
+import javax.script.Invocable;
 import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
 import javax.script.ScriptException;
+import org.json.JSONObject;
 import org.openjdk.nashorn.api.scripting.NashornScriptEngineFactory;
 import r4ghidra.repl.R2Command;
 import r4ghidra.repl.R2CommandException;
@@ -155,13 +157,14 @@ private String convertToJSON(Object obj) {
 	} else if (obj instanceof Number || obj instanceof Boolean) {
 	return obj.toString();
 	} else if (obj instanceof String) {
-	return "\"" + ((String) obj).replace("\"", "\\\"") + "\"";
+	return JSONObject.quote((String) obj);
 	} else {
-	// For other objects, try to use JavaScript's JSON.stringify
+	// Pass objects directly to JSON.stringify without evaluating their textual representation.
 	try {
-		return (String) engine.eval("JSON.stringify(" + obj.toString() + ")");
+		Invocable invocable = (Invocable) engine;
+		return (String) invocable.invokeMethod(engine.get("JSON"), "stringify", obj);
 	} catch (Exception e) {
-		return "\"" + obj.toString().replace("\"", "\\\"") + "\"";
+		return JSONObject.quote(obj.toString());
 	}
 	}
 }

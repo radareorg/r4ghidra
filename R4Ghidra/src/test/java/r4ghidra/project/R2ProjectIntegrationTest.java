@@ -49,6 +49,7 @@ public class R2ProjectIntegrationTest {
       R2REPLImpl repl = new R2REPLImpl();
       repl.registerCommands(R4CommandInitializer.getCommandHandlers());
       R2Context context = repl.getContext();
+      r4ghidra.repl.handlers.R2JsCommandHandlerTest.run(context);
       R2Project project = new R2Project();
       project.modules.add(new Mapping(".text", null, 0, 255, 0x1000, 0x10ff, 0));
       project.flags.add(new Flag("test.flag", new Location(0, 0x10), 4));
